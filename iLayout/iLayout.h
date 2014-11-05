@@ -17,4 +17,8 @@ FOUNDATION_EXPORT const unsigned char iLayoutVersionString[];
 // In this header, you should import all the public headers of your framework using statements like #import <iLayout/PublicHeader.h>
 
 #import <iLayout/UIView+CSS.h>
-
+#import <iLayout/UIView+Position.h>
+#import <iLayout/UITextField+Active.h>
+#import <iLayout/NSObject+Event.h>
+#import <iLayout/NSObject+Attach.h>
+#import <iLayout/UIView+Autolayout.h>
