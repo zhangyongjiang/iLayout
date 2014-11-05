@@ -301,7 +301,6 @@ static NSDictionary* themes;
 -(void)setID:(NSString *)ID {
     ViewData* vd = [self getViewData];
     vd.ID = ID;
-    [self setSubviewsID];
 }
 
 -(BOOL)useCssLayout {
@@ -628,10 +627,6 @@ static NSDictionary* themes;
 
 -(void)setSubviewsID {
     Class clazz = [self class];
-    NSString* ID = self.ID;
-    if(!ID) {
-        ID = [UIView simpleClsName:clazz];
-    }
     u_int count;
     
     objc_property_t* properties = class_copyPropertyList(clazz, &count);
@@ -647,8 +642,7 @@ static NSDictionary* themes;
                 if (propValue.ID) {
                     continue;
                 }
-                NSString* subviewID = [NSString stringWithFormat:@"%@-%@", ID, key];
-                propValue.ID = subviewID;
+                propValue.ID = key;
             }
         }
     }
