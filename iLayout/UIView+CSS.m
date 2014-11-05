@@ -314,17 +314,6 @@ static NSDictionary* themes;
         if (cssClasses) {
             [self addCssClasses:cssClasses];
         }
-        
-        Class cls = [self class];
-        while (cls != nil) {
-            NSString* clsName = [UIView simpleClsName:cls];
-            [self addCssClasses:clsName];
-            if (cls == [UIView class]) {
-                break;
-            }
-            cls = [cls superclass];
-        }
-        
     }
 }
 
@@ -498,20 +487,35 @@ static NSDictionary* themes;
     }
     
     ViewData* vd = [self getViewData];
+    NSMutableArray* cssClasses = [[NSMutableArray alloc] init];
     if (vd.cssClasses) {
         for (NSString* cls in vd.cssClasses) {
-            NSString* key = [NSString stringWithFormat:@".%@", cls];
-            NSDictionary* dict = [cssDict objectForKey:key];
-            if(dict != nil) {
-                NSString* value = [dict objectForKey:name];
-                if( value != nil) {
-                    value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-                    return value;
-                }
+            [cssClasses addObject:cls];
+        }
+    }
+
+    Class clz = [self class];
+    while (clz != nil) {
+        NSString* clsName = [UIView simpleClsName:clz];
+        [cssClasses addObject:clsName];
+        if (clz == [UIView class]) {
+            break;
+        }
+        clz = [clz superclass];
+    }
+    
+    for (NSString* cls in cssClasses) {
+        NSString* key = [NSString stringWithFormat:@".%@", cls];
+        NSDictionary* dict = [cssDict objectForKey:key];
+        if(dict != nil) {
+            NSString* value = [dict objectForKey:name];
+            if( value != nil) {
+                value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+                return value;
             }
         }
     }
-    
+
     return nil;
 }
 
@@ -638,6 +642,7 @@ static NSDictionary* themes;
         }
     }
 }
+
 
 -(void)setSubviewsID {
     Class clazz = [self class];
