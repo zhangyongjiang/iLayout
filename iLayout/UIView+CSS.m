@@ -633,6 +633,9 @@ static NSDictionary* themes;
             NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
             UIView* propValue = [self valueForKey:key];
             if (propValue) {
+                if (propValue.ID) {
+                    continue;
+                }
                 NSString* subviewID = [NSString stringWithFormat:@"%@-%@", ID, key];
                 propValue.ID = subviewID;
             }
