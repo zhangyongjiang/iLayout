@@ -235,14 +235,20 @@ static NSDictionary* themes;
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
     if (view.useCssLayout) {
-        [view applyCss];
+        NSNumber* num = [view cssWidth];
+        if (num) {
+            view.width = num.floatValue;
+        }
+        num = [view cssHeight];
+        if (num) {
+            view.height = num.floatValue;
+        }
     }
 }
 
 -(id)initWithCssEnabled:(BOOL)enabled {
     self = [self initWithFrame:CGRectZero];
     self.useCssLayout = enabled;
-    [self applyCss];
     return self;
 }
 
@@ -250,7 +256,6 @@ static NSDictionary* themes;
     self = [self initWithFrame:CGRectZero];
     self.useCssLayout = YES;
     [self addCssClasses:cssCls];
-    [self applyCss];
     return self;
 }
 
@@ -258,7 +263,6 @@ static NSDictionary* themes;
     self = [self initWithFrame:CGRectZero];
     self.useCssLayout = YES;
     self.ID = ID;
-    [self applyCss];
     return self;
 }
 
@@ -267,21 +271,18 @@ static NSDictionary* themes;
     self.useCssLayout = YES;
     self.ID = ID;
     [self addCssClasses:cssClasses];
-    [self applyCss];
     return self;
 }
 
 -(id)initWithFrame:(CGRect)frame cssClasses:(NSString *)cssClasses {
     self = [self initWithFrame_swizzle:frame];
     [self addCssClasses:cssClasses];
-    [self applyCss];
     return self;
 }
 
 -(id)initWithFrame:(CGRect)frame andID:(NSString *)ID {
     self = [self initWithFrame_swizzle:frame];
     self.ID = ID;
-    [self applyCss];
     return self;
 }
 
@@ -289,7 +290,6 @@ static NSDictionary* themes;
     self = [self initWithFrame_swizzle:frame];
     self.ID = ID;
     [self addCssClasses:cssClasses];
-    [self applyCss];
     return self;
 }
 
@@ -313,42 +313,57 @@ static NSDictionary* themes;
         NSString* cssClasses = [self css:@"cssClasses"];
         if (cssClasses) {
             [self addCssClasses:cssClasses];
-            [self applyCss];
         }
+        
+        Class cls = [self class];
+        while (cls != nil) {
+            NSString* clsName = [UIView simpleClsName:cls];
+            [self addCssClasses:clsName];
+            if (cls == [UIView class]) {
+                break;
+            }
+            cls = [cls superclass];
+        }
+        
     }
 }
 
 -(void)applyCss {
-    UIColor* bgColor = [self cssBgColor];
-    if (bgColor) {
-        self.backgroundColor = bgColor;
+    if(self.useCssLayout) {
+        UIColor* bgColor = [self cssBgColor];
+        if (bgColor) {
+            self.backgroundColor = bgColor;
+        }
+        
+        NSNumber* num = [self cssNumber:@"width"];
+        if(num) self.width = num.floatValue;
+        num = [self cssNumber:@"height"];
+        if(num) self.height = num.floatValue;
+        
+        NSNumber* cornerRadius = [self cssNumber:@"corner-radius"];
+        if (cornerRadius) {
+            self.layer.cornerRadius = cornerRadius.floatValue;
+        }
+        
+        NSString* masksToBounds = [self css:@"masks-to-bounds"];
+        if (masksToBounds && [masksToBounds isEqualToString:@"true"]) {
+            self.layer.masksToBounds = YES;
+        }
+        
+        NSString* hcenter = [self css:@"hcenter"];
+        if(hcenter && [hcenter isEqualToString:@"true"]) {
+            [self hcenterInParent];
+        }
+        
+        NSString* vcenter = [self css:@"vcenter"];
+        if(vcenter && [vcenter isEqualToString:@"true"]) {
+            [self vcenterInParent];
+        }
+        [self applyCssPositions];
     }
-    
-    NSNumber* num = [self cssNumber:@"width"];
-    if(num) self.width = num.floatValue;
-    num = [self cssNumber:@"height"];
-    if(num) self.height = num.floatValue;
-    
-    NSNumber* cornerRadius = [self cssNumber:@"corner-radius"];
-    if (cornerRadius) {
-        self.layer.cornerRadius = cornerRadius.floatValue;
+    for (UIView* child in self.subviews) {
+        [child applyCss];
     }
-    
-    NSString* masksToBounds = [self css:@"masks-to-bounds"];
-    if (masksToBounds && [masksToBounds isEqualToString:@"true"]) {
-        self.layer.masksToBounds = YES;
-    }
-    
-    NSString* hcenter = [self css:@"hcenter"];
-    if(hcenter && [hcenter isEqualToString:@"true"]) {
-        [self hcenterInParent];
-    }
-    
-    NSString* vcenter = [self css:@"vcenter"];
-    if(vcenter && [vcenter isEqualToString:@"true"]) {
-        [self vcenterInParent];
-    }
-    [self applyCssPositions];
 }
 
 -(CGFloat)scale
@@ -622,7 +637,6 @@ static NSDictionary* themes;
             [vd.cssClasses addObject:cls];
         }
     }
-    [self applyCss];
 }
 
 -(void)setSubviewsID {
