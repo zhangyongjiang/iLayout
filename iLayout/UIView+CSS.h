@@ -12,6 +12,8 @@
 @property (strong, nonatomic)NSString* ID;
 @property (assign, nonatomic)BOOL useCssLayout;
 
++(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
+
 -(id)initWithCssClasses:(NSString*)cssCls;
 -(id)initWithID:(NSString *)ID ;
 -(id)initWithID:(NSString *)ID cssClasses:(NSString*)cssClasses ;

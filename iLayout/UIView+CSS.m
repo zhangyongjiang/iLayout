@@ -76,7 +76,6 @@ static NSDictionary* themes;
 
 -(id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
-    self.useCssLayout = YES;
     return self;
 }
 
@@ -311,6 +310,13 @@ static NSDictionary* themes;
 
 -(void)setUseCssLayout:(BOOL)useCssLayout {
     [self getViewData].useCssLayout = useCssLayout;
+    if (useCssLayout) {
+        NSString* cssClasses = [self css:@"cssClasses"];
+        if (cssClasses) {
+            [self addCssClasses:cssClasses];
+            [self applyCss];
+        }
+    }
 }
 
 -(void)applyCss {
@@ -604,13 +610,18 @@ static NSDictionary* themes;
 }
 
 -(void)addCssClasses:(NSString *)clsNames {
+    if (clsNames == nil || clsNames.length == 0) {
+        return;
+    }
     NSArray* names = [clsNames componentsSeparatedByString:@" "];
     for (NSString* cls in names) {
         ViewData* vd = [self getViewData];
         if (vd.cssClasses == nil) {
             vd.cssClasses = [[NSMutableArray alloc] init];
         }
-        [vd.cssClasses addObject:cls];
+        if ([vd.cssClasses indexOfObject:cls] == NSNotFound) {
+            [vd.cssClasses addObject:cls];
+        }
     }
     [self applyCss];
 }
@@ -796,5 +807,10 @@ static NSString* csskey = @"mycss";
     return myCss;
 }
 
++(void)enableCssLayouts:(NSArray *)views :(BOOL)enable {
+    for (UIView* view in views) {
+        [view setUseCssLayout:enable];
+    }
+}
 @end
 
