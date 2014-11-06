@@ -19,6 +19,10 @@ static NSDictionary* themes;
 
 -(void)applyCss {
     [super applyCss];
+    
+    if(!self.useCssLayout) {
+        return;
+    }
     UIFont* font = [self cssFont];
     if (font) {
         self.font = font;
@@ -45,6 +49,9 @@ static NSDictionary* themes;
 
 -(void)applyCss {
     [super applyCss];
+    if(!self.useCssLayout) {
+        return;
+    }
     NSString* placeholder = [self css:@"placeholder-text"];
     UIColor* placeholderColor = [self cssColor:@"placeholder-text-color"];
     if (placeholderColor && placeholder) {
@@ -127,7 +134,10 @@ static NSDictionary* themes;
 
 -(void)applyCss {
     [super applyCss];
-    
+
+    if(!self.useCssLayout) {
+        return;
+    }
     NSString* value;
     {
         value = [self css:@"image-normal"];
@@ -235,14 +245,7 @@ static NSDictionary* themes;
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
     if (view.useCssLayout) {
-        NSNumber* num = [view cssWidth];
-        if (num) {
-            view.width = num.floatValue;
-        }
-        num = [view cssHeight];
-        if (num) {
-            view.height = num.floatValue;
-        }
+        [self applyCss];
     }
 }
 
