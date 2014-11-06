@@ -25,9 +25,27 @@ static NSDictionary* themes;
         return;
     }
     
+    UIFont* font = [self cssFont];
+    if (font) {
+        self.font = font;
+    }
+    
     NSNumber* lines = [self cssNumber:@"numberOfLines"];
     if (lines) {
         self.numberOfLines = lines.integerValue;
+    }
+    
+    NSString* textAlignment = [self css:@"textAlignment"];
+    if (textAlignment) {
+        if ([textAlignment isEqualToString:@"center"]) {
+            self.textAlignment = NSTextAlignmentCenter;
+        }
+        if ([textAlignment isEqualToString:@"left"]) {
+            self.textAlignment = NSTextAlignmentLeft;
+        }
+        if ([textAlignment isEqualToString:@"right"]) {
+            self.textAlignment = NSTextAlignmentRight;
+        }
     }
     
     NSString* text = [self css:@"text"];
@@ -35,10 +53,6 @@ static NSDictionary* themes;
         self.text = text;
     }
     
-    UIFont* font = [self cssFont];
-    if (font) {
-        self.font = font;
-    }
     UIColor* color = [self cssColor:@"color"];
     if (color) {
         self.textColor = color;
