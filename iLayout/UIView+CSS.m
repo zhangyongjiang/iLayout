@@ -24,6 +24,17 @@ static NSDictionary* themes;
     if(!self.useCssLayout) {
         return;
     }
+    
+    NSNumber* lines = [self cssNumber:@"numberOfLines"];
+    if (lines) {
+        self.numberOfLines = lines.integerValue;
+    }
+    
+    NSString* text = [self css:@"text"];
+    if (text) {
+        self.text = text;
+    }
+    
     UIFont* font = [self cssFont];
     if (font) {
         self.font = font;
@@ -69,16 +80,6 @@ static NSDictionary* themes;
 }
 
 @end
-
-@interface UILabel (CSS)
-@end
-
-@interface UIButton (CSS)
-@end
-
-@interface UITextField (CSS)
-@end
-
 
 @implementation UITextFieldWithPadding
 
@@ -222,6 +223,7 @@ static NSDictionary* themes;
 @end
 
 
+static NSMutableDictionary* clsCssFileDict;
 @implementation UIView (CSS)
 
 + (void)load
@@ -230,6 +232,8 @@ static NSDictionary* themes;
     
     ESCssParser *parser = [[ESCssParser alloc] init];
     themes = [parser parseFile:@"default" type:@"css"];
+    
+    clsCssFileDict = [[NSMutableDictionary alloc] init];
     
     dispatch_once(&onceToken, ^{
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(initWithFrame_swizzle:)), class_getInstanceMethod([self class], @selector(initWithFrame:)));
@@ -241,7 +245,31 @@ static NSDictionary* themes;
     self = [self initWithFrame_swizzle:frame];
     [self setSubviewsID];
     self.backgroundColor = [UIColor clearColor];
+    [self loadSameNameCss];
     return self;
+}
+
+-(void)loadSameNameCss {
+    NSString* clsName = [UIView simpleClsName:[self class]];
+    id cached = [clsCssFileDict objectForKey:clsName];
+    if (cached) {
+        if ([cached isKindOfClass:[NSMutableDictionary class]]) {
+            [self attachObject:cached forKey:csskey];
+        }
+        return;
+    }
+    NSString* path = [[NSBundle mainBundle] pathForResource:clsName ofType:@"css"];
+    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        ESCssParser *parser = [[ESCssParser alloc] init];
+        NSDictionary* dict = [parser parseFile:clsName type:@"css"];
+        cached = [NSMutableDictionary dictionaryWithDictionary:dict];
+        [self attachObject:cached forKey:csskey];
+        [clsCssFileDict setObject:cached forKey:clsName];
+    }
+    else {
+        [clsCssFileDict setObject:[NSNumber numberWithBool:false] forKey:clsName];
+    }
+    
 }
 
 -(void)swizzle_addSubview:(UIView *)view {
@@ -436,7 +464,7 @@ static NSDictionary* themes;
     if ([strNum hasSuffix:@"px"]) {
         strNum = [strNum substringToIndex:(strNum.length-2)];
     }
-    return [NSNumber numberWithFloat:[strNum floatValue]];
+    return [NSNumber numberWithFloat:([strNum floatValue] * [self scale])];
 }
 
 -(NSNumber*) cssNumber:(NSString*)name {
@@ -479,7 +507,27 @@ static NSDictionary* themes;
     return nil;
 }
 
--(NSString*) css:(NSString*)name fromDict:(NSDictionary*)cssDict {
+-(NSString*) cssForID:(NSString*)name {
+    UIView* viewOfCss = self;
+    while (viewOfCss) {
+        NSDictionary* myCssDict = [viewOfCss myCssDict];
+        if (myCssDict) {
+            NSString* value = [self cssForID:name fromDict:myCssDict];
+            if (value) {
+                return value;
+            }
+        }
+        viewOfCss = viewOfCss.superview;
+    }
+    NSString* value = [self cssForID:name fromDict:themes];
+    if (value) {
+        return value;
+    }
+    
+    return nil;
+}
+
+-(NSString*) cssForID:(NSString*)name fromDict:(NSDictionary*)cssDict {
     NSString* ID = [self cssId];
     if (ID != nil) {
         NSDictionary* dict = [cssDict objectForKey:ID];
@@ -490,6 +538,14 @@ static NSDictionary* themes;
                 return value;
             }
         }
+    }
+    return nil;
+}
+
+-(NSString*) css:(NSString*)name fromDict:(NSDictionary*)cssDict {
+    NSString* value = [self cssForID:name fromDict:cssDict];
+    if (value) {
+        return value;
     }
     
     ViewData* vd = [self getViewData];
