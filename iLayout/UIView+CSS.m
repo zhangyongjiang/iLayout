@@ -29,6 +29,11 @@ static NSDictionary* themes;
         self.numberOfLines = lines.integerValue;
     }
     
+    NSString* text = [self css:@"text"];
+    if (text) {
+        self.text = text;
+    }
+    
     UIFont* font = [self cssFont];
     if (font) {
         self.font = font;
@@ -252,8 +257,8 @@ static NSMutableDictionary* clsCssFileDict;
         }
         return;
     }
-    NSString* fullName = [NSString stringWithFormat:@"%@.%@", clsName, @"css"];
-    if([[NSFileManager defaultManager] fileExistsAtPath:fullName]) {
+    NSString* path = [[NSBundle mainBundle] pathForResource:clsName ofType:@"css"];
+    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
         ESCssParser *parser = [[ESCssParser alloc] init];
         NSDictionary* dict = [parser parseFile:clsName type:@"css"];
         cached = [NSMutableDictionary dictionaryWithDictionary:dict];
@@ -500,7 +505,27 @@ static NSMutableDictionary* clsCssFileDict;
     return nil;
 }
 
--(NSString*) css:(NSString*)name fromDict:(NSDictionary*)cssDict {
+-(NSString*) cssForID:(NSString*)name {
+    UIView* viewOfCss = self;
+    while (viewOfCss) {
+        NSDictionary* myCssDict = [viewOfCss myCssDict];
+        if (myCssDict) {
+            NSString* value = [self cssForID:name fromDict:myCssDict];
+            if (value) {
+                return value;
+            }
+        }
+        viewOfCss = viewOfCss.superview;
+    }
+    NSString* value = [self cssForID:name fromDict:themes];
+    if (value) {
+        return value;
+    }
+    
+    return nil;
+}
+
+-(NSString*) cssForID:(NSString*)name fromDict:(NSDictionary*)cssDict {
     NSString* ID = [self cssId];
     if (ID != nil) {
         NSDictionary* dict = [cssDict objectForKey:ID];
@@ -511,6 +536,14 @@ static NSMutableDictionary* clsCssFileDict;
                 return value;
             }
         }
+    }
+    return nil;
+}
+
+-(NSString*) css:(NSString*)name fromDict:(NSDictionary*)cssDict {
+    NSString* value = [self cssForID:name fromDict:cssDict];
+    if (value) {
+        return value;
     }
     
     ViewData* vd = [self getViewData];
