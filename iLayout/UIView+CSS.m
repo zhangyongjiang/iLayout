@@ -221,6 +221,7 @@ static NSDictionary* themes;
 @end
 
 
+static NSMutableDictionary* clsCssFileDict;
 @implementation UIView (CSS)
 
 + (void)load
@@ -229,6 +230,8 @@ static NSDictionary* themes;
     
     ESCssParser *parser = [[ESCssParser alloc] init];
     themes = [parser parseFile:@"default" type:@"css"];
+    
+    clsCssFileDict = [[NSMutableDictionary alloc] init];
     
     dispatch_once(&onceToken, ^{
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(initWithFrame_swizzle:)), class_getInstanceMethod([self class], @selector(initWithFrame:)));
@@ -240,7 +243,31 @@ static NSDictionary* themes;
     self = [self initWithFrame_swizzle:frame];
     [self setSubviewsID];
     self.backgroundColor = [UIColor clearColor];
+    [self loadSameNameCss];
     return self;
+}
+
+-(void)loadSameNameCss {
+    NSString* clsName = [UIView simpleClsName:[self class]];
+    id cached = [clsCssFileDict objectForKey:clsName];
+    if (cached) {
+        if ([cached isKindOfClass:[NSMutableDictionary class]]) {
+            [self attachObject:cached forKey:csskey];
+        }
+        return;
+    }
+    NSString* fullName = [NSString stringWithFormat:@"%@.%@", clsName, @"css"];
+    if([[NSFileManager defaultManager] fileExistsAtPath:fullName]) {
+        ESCssParser *parser = [[ESCssParser alloc] init];
+        NSDictionary* dict = [parser parseFile:clsName type:@"css"];
+        cached = [NSMutableDictionary dictionaryWithDictionary:dict];
+        [self attachObject:cached forKey:csskey];
+        [clsCssFileDict setObject:cached forKey:clsName];
+    }
+    else {
+        [clsCssFileDict setObject:[NSNumber numberWithBool:false] forKey:clsName];
+    }
+    
 }
 
 -(void)swizzle_addSubview:(UIView *)view {
