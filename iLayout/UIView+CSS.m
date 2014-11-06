@@ -261,8 +261,11 @@ static NSMutableDictionary* clsCssFileDict;
 
     // add my css to child css if child doesn't have it
     // set child property ID
-    NSMutableDictionary* myCss = [self attachedObjectForKey:csskey];
-    {
+    NSString* clsName = [UIView simpleClsName:[self class]];
+    if (![clsName hasPrefix:@"UI"]) {
+        // if above is for performance consideration. No need to process attribute for UI... classes.
+        
+        NSMutableDictionary* myCss = [self attachedObjectForKey:csskey];
         Class clazz = [self class];
         u_int count;
         
