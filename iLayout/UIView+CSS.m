@@ -9,6 +9,7 @@
 #import "UIView+CSS.h"
 #import "ESCssParser.h"
 #import "UIView+Position.h"
+#import "UIView+Autolayout.h"
 #import "UIImage+ImageEffects.h"
 #import "UIColor+String.h"
 #import "NSObject+Attach.h"
@@ -345,7 +346,8 @@ static NSDictionary* themes;
         
         NSString* hcenter = [self css:@"hcenter"];
         if(hcenter && [hcenter isEqualToString:@"true"]) {
-            [self hcenterInParent];
+            [self.superview autoLayoutXCenter:[NSArray arrayWithObject:self]];
+//            [self hcenterInParent];
         }
         
         NSString* vcenter = [self css:@"vcenter"];
@@ -743,36 +745,46 @@ static NSDictionary* themes;
     NSNumber* num = [self numberFromString:vp.value];
     if(related == self.superview) {
         if ([ vp.direction isEqualToString:@"hcenter"]) {
-            [self hcenterInParent];
+            [self.superview autoLayoutXCenter:[NSArray arrayWithObject:self]];
+//            [self hcenterInParent];
         }
         else if ([ vp.direction isEqualToString:@"vcenter"]) {
-            [self vcenterInParent];
+            [self.superview autoLayoutYCenter:[NSArray arrayWithObject:self]];
+//            [self vcenterInParent];
         }
         else if ([ vp.direction isEqualToString:@"below"]) {
-            [self alignParentTopWithMarghin:num.floatValue];
+            [self.superview autoLayout:self marginTop:num.floatValue];
+//            [self alignParentTopWithMarghin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"above"]) {
-            [self alignParentBottomWithMarghin:num.floatValue];
+            [self.superview autoLayout:self marginBottom:num.floatValue];
+//            [self alignParentBottomWithMarghin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"left"]) {
-            [self alignParentLeftWithMarghin:num.floatValue];
+            [self.superview autoLayout:self marginLeft:num.floatValue];
+//            [self alignParentLeftWithMarghin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"right"]) {
-            [self alignParentRightWithMarghin:num.floatValue];
+            [self.superview autoLayout:self marginRight:num.floatValue];
+//            [self alignParentRightWithMarghin:num.floatValue];
         }
     }
     else {
         if ([ vp.direction isEqualToString:@"below"]) {
-            [self belowView:related withMargin:num.floatValue];
+            [self.superview autoLayout:self belowView:related margin:num.floatValue];
+//            [self belowView:related withMargin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"above"]) {
-            [self aboveView:related withMargin:num.floatValue];
+            [self.superview autoLayout:self aboveView:related margin:num.floatValue];
+//            [self aboveView:related withMargin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"left"]) {
-            [self leftOfView:related withMargin:num.floatValue];
+            [self.superview autoLayout:self  onTheLeftOfView:related margin:num.floatValue];
+//            [self leftOfView:related withMargin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"right"]) {
-            [self rightOfView:related withMargin:num.floatValue];
+            [self.superview autoLayout:self  onTheRightOfView:related margin:num.floatValue];
+//            [self rightOfView:related withMargin:num.floatValue];
         }
     }
 }
