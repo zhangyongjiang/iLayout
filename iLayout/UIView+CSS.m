@@ -257,9 +257,46 @@ static NSMutableDictionary* clsCssFileDict;
 
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
-    [self setSubviewsID];
-    self.backgroundColor = [UIColor clearColor];
     [self loadSameNameCss];
+
+    // add my css to child css if child doesn't have it
+    // set child property ID
+    NSMutableDictionary* myCss = [self attachedObjectForKey:csskey];
+    {
+        Class clazz = [self class];
+        u_int count;
+        
+        objc_property_t* properties = class_copyPropertyList(clazz, &count);
+        for (int i = 0; i < count ; i++)
+        {
+            objc_property_t prop=properties[i];
+            Class cls = [self classForProperty:prop];
+            if([self isUIView:cls]) {
+                const char* propertyName = property_getName(prop);
+                NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+                UIView* propValue = [self valueForKey:key];
+                if (propValue) {
+                    if (myCss) {
+                        NSMutableDictionary* childCss = [propValue attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
+                        NSUInteger oldCnt = childCss.count;
+                        for (NSString* key in myCss) {
+                            if ([childCss objectForKey:key] == nil) {
+                                [childCss setObject:[myCss objectForKey:key] forKey:key];
+                            }
+                        }
+                        NSUInteger newCnt = childCss.count;
+                        if(oldCnt != newCnt) {
+                            [propValue attachObject:childCss forKey:csskey];
+                        }
+                    }
+                    propValue.ID = key;
+                }
+            }
+        }
+        free(properties);
+    }
+
+    self.backgroundColor = [UIColor clearColor];
     return self;
 }
 
@@ -276,9 +313,10 @@ static NSMutableDictionary* clsCssFileDict;
     if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
         ESCssParser *parser = [[ESCssParser alloc] init];
         NSDictionary* dict = [parser parseFile:clsName type:@"css"];
-        cached = [NSMutableDictionary dictionaryWithDictionary:dict];
-        [self attachObject:cached forKey:csskey];
-        [clsCssFileDict setObject:cached forKey:clsName];
+        NSMutableDictionary* myCss = [self attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
+        [myCss addEntriesFromDictionary:dict];
+        [self attachObject:myCss forKey:csskey];
+        [clsCssFileDict setObject:myCss forKey:clsName];
     }
     else {
         [clsCssFileDict setObject:[NSNumber numberWithBool:false] forKey:clsName];
@@ -719,30 +757,6 @@ static NSMutableDictionary* clsCssFileDict;
     }
 }
 
-
--(void)setSubviewsID {
-    Class clazz = [self class];
-    u_int count;
-    
-    objc_property_t* properties = class_copyPropertyList(clazz, &count);
-    for (int i = 0; i < count ; i++)
-    {
-        objc_property_t prop=properties[i];
-        Class cls = [self classForProperty:prop];
-        if([self isUIView:cls]) {
-            const char* propertyName = property_getName(prop);
-            NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
-            UIView* propValue = [self valueForKey:key];
-            if (propValue) {
-                if (propValue.ID) {
-                    continue;
-                }
-                propValue.ID = key;
-            }
-        }
-    }
-    free(properties);
-}
 
 - (void) dumpProperties{
     Class clazz = [self class];
