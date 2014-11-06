@@ -148,13 +148,6 @@ static char viewData;
     }
 }
 
--(void)addSubviews:(NSArray *)views
-{
-    for (UIView *view in views) {
-        [self addSubview:view];
-    }
-}
-
 -(CGFloat)height
 {
     return self.frame.size.height;

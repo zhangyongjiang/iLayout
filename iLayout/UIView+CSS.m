@@ -266,9 +266,10 @@ static NSMutableDictionary* classCssCache;
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
     [self loadSameNameCss];
-
+    
     // add my css to child css if child doesn't have it
     // set child property ID
+    [self initProperties];
     NSString* clsName = [UIView simpleClsName:[self class]];
     if (![clsName hasPrefix:@"UI"]) {
         // if above is for performance consideration. No need to process attribute for UI... classes.
@@ -287,6 +288,7 @@ static NSMutableDictionary* classCssCache;
                 NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
                 UIView* propValue = [self valueForKey:key];
                 if (propValue) {
+                    propValue.ID = key;
                     if (myCss) {
                         NSMutableDictionary* childCss = [propValue attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
                         NSUInteger oldCnt = childCss.count;
@@ -298,17 +300,23 @@ static NSMutableDictionary* classCssCache;
                         NSUInteger newCnt = childCss.count;
                         if(oldCnt != newCnt) {
                             [propValue attachObject:childCss forKey:csskey];
+                            NSString* cssClasses = [propValue css:@"cssClasses"];
+                            if (cssClasses) {
+                                [propValue addCssClasses:cssClasses];
+                            }
                         }
                     }
-                    propValue.ID = key;
                 }
             }
         }
         free(properties);
     }
-
+    
     self.backgroundColor = [UIColor clearColor];
     return self;
+}
+
+-(void)initProperties {
 }
 
 -(void)loadSameNameCss {
@@ -337,9 +345,7 @@ static NSMutableDictionary* classCssCache;
 
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
-    if (view.useCssLayout) {
-        [self applyCss];
-    }
+    [self applyCss];
 }
 
 -(id)initWithCssEnabled:(BOOL)enabled {
@@ -929,6 +935,13 @@ static NSString* csskey = @"mycss";
 -(NSDictionary*)myCssDict {
     NSDictionary* myCss = [self attachedObjectForKey:csskey];
     return myCss;
+}
+
+-(void)addSubviews:(NSArray *)views
+{
+    for (UIView *view in views) {
+        [self addSubview:view];
+    }
 }
 
 +(void)enableCssLayouts:(NSArray *)views :(BOOL)enable {

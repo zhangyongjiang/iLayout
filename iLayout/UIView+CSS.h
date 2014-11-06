@@ -25,6 +25,8 @@
 -(void)loadCssFiles:(NSString*)fileNames;
 -(void)applyCss;
 -(void)addCssClasses:(NSString *)clsNames;
+-(void)initProperties;
+- (void)addSubviews:(NSArray *)views;
 
 -(NSString*) css:(NSString*)name;
 -(NSNumber*) cssAbsNumber:(NSString*)name;

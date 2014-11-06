@@ -41,7 +41,6 @@
 + (void)top2bottom:(NSArray *)views withMargin:(CGFloat) margin;
 + (CGRect)rectForViews:(NSArray *)views;
 + (UIView *)groupOfViews:(NSArray *)views;
-- (void)addSubviews:(NSArray *)views;
 - (void)fitParentWidthWithMargin:(CGFloat) margin;
 - (void)fitParentHeightWithMargin:(CGFloat) margin;
 - (void)fitParentWithMargin:(CGFloat) margin;
