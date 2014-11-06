@@ -23,6 +23,12 @@ static NSDictionary* themes;
     if(!self.useCssLayout) {
         return;
     }
+    
+    NSNumber* lines = [self cssNumber:@"numberOfLines"];
+    if (lines) {
+        self.numberOfLines = lines.integerValue;
+    }
+    
     UIFont* font = [self cssFont];
     if (font) {
         self.font = font;
@@ -68,16 +74,6 @@ static NSDictionary* themes;
 }
 
 @end
-
-@interface UILabel (CSS)
-@end
-
-@interface UIButton (CSS)
-@end
-
-@interface UITextField (CSS)
-@end
-
 
 @implementation UITextFieldWithPadding
 
