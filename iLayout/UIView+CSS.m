@@ -434,7 +434,7 @@ static NSDictionary* themes;
     if ([strNum hasSuffix:@"px"]) {
         strNum = [strNum substringToIndex:(strNum.length-2)];
     }
-    return [NSNumber numberWithFloat:[strNum floatValue]];
+    return [NSNumber numberWithFloat:([strNum floatValue] * [self scale])];
 }
 
 -(NSNumber*) cssNumber:(NSString*)name {
