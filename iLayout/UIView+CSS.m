@@ -237,7 +237,7 @@ static NSDictionary* themes;
 @end
 
 
-static NSMutableDictionary* clsCssFileDict;
+static NSMutableDictionary* classCssCache;
 @implementation UIView (CSS)
 
 + (void)load
@@ -245,9 +245,17 @@ static NSMutableDictionary* clsCssFileDict;
     static dispatch_once_t onceToken;
     
     ESCssParser *parser = [[ESCssParser alloc] init];
-    themes = [parser parseFile:@"default" type:@"css"];
     
-    clsCssFileDict = [[NSMutableDictionary alloc] init];
+    
+    NSString* path = [[NSBundle mainBundle] pathForResource:@"default" ofType:@"css"];
+    if(![[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        themes = [[NSMutableDictionary alloc] init];
+    }
+    else {
+        themes = [parser parseFile:@"default" type:@"css"];
+    }
+    
+    classCssCache = [[NSMutableDictionary alloc] init];
     
     dispatch_once(&onceToken, ^{
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(initWithFrame_swizzle:)), class_getInstanceMethod([self class], @selector(initWithFrame:)));
@@ -305,7 +313,7 @@ static NSMutableDictionary* clsCssFileDict;
 
 -(void)loadSameNameCss {
     NSString* clsName = [UIView simpleClsName:[self class]];
-    id cached = [clsCssFileDict objectForKey:clsName];
+    id cached = [classCssCache objectForKey:clsName];
     if (cached) {
         if ([cached isKindOfClass:[NSMutableDictionary class]]) {
             [self attachObject:cached forKey:csskey];
@@ -319,10 +327,10 @@ static NSMutableDictionary* clsCssFileDict;
         NSMutableDictionary* myCss = [self attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
         [myCss addEntriesFromDictionary:dict];
         [self attachObject:myCss forKey:csskey];
-        [clsCssFileDict setObject:myCss forKey:clsName];
+        [classCssCache setObject:myCss forKey:clsName];
     }
     else {
-        [clsCssFileDict setObject:[NSNumber numberWithBool:false] forKey:clsName];
+        [classCssCache setObject:[NSNumber numberWithBool:false] forKey:clsName];
     }
     
 }
