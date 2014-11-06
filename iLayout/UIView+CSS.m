@@ -238,6 +238,7 @@ static NSDictionary* themes;
 
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
+    [self setSubviewsID];
     self.backgroundColor = [UIColor clearColor];
     return self;
 }
