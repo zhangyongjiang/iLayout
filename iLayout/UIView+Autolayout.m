@@ -214,6 +214,54 @@
     vd.widthConstraint = con;
 }
 
+-(void)autoLayout:(UIView*)subview widthPercentOfParentHeight:(CGFloat)percent
+{
+    if(!subview.superview) [self addSubview:subview];
+    subview.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    ViewData* vd = [self getViewData];
+    if (vd.widthConstraint) {
+        [self removeConstraint:vd.widthConstraint];
+    }
+    
+    NSLayoutConstraint* con = [NSLayoutConstraint constraintWithItem:subview attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeHeight multiplier:percent  constant:0];
+    
+    [self addConstraints:@[con]];
+    vd.widthConstraint = con;
+}
+
+-(void)autoLayout:(UIView*)subview heightPercent:(CGFloat)percent
+{
+    if(!subview.superview) [self addSubview:subview];
+    subview.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    ViewData* vd = [self getViewData];
+    if (vd.widthConstraint) {
+        [self removeConstraint:vd.heightConstraint];
+    }
+    
+    NSLayoutConstraint* con = [NSLayoutConstraint constraintWithItem:subview attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeHeight multiplier:percent  constant:0];
+    
+    [self addConstraints:@[con]];
+    vd.widthConstraint = con;
+}
+
+-(void)autoLayout:(UIView*)subview heightPercentOfParentWidth:(CGFloat)percent
+{
+    if(!subview.superview) [self addSubview:subview];
+    subview.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    ViewData* vd = [self getViewData];
+    if (vd.widthConstraint) {
+        [self removeConstraint:vd.heightConstraint];
+    }
+    
+    NSLayoutConstraint* con = [NSLayoutConstraint constraintWithItem:subview attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:self attribute:NSLayoutAttributeWidth multiplier:percent  constant:0];
+    
+    [self addConstraints:@[con]];
+    vd.widthConstraint = con;
+}
+
 -(void)autoLayout:(UIView*)subview height:(CGFloat)height
 {
     if(!subview.superview) [self addSubview:subview];

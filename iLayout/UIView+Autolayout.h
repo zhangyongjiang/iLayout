@@ -13,6 +13,8 @@
 -(void)autoLayout:(UIView*)subview height:(CGFloat)height;
 -(void)autoLayout:(UIView*)subview widthPercent:(CGFloat)percent;
 -(void)autoLayout:(UIView*)subview heightPercent:(CGFloat)precent;
+-(void)autoLayout:(UIView*)subview widthPercentOfParentHeight:(CGFloat)percent;
+-(void)autoLayout:(UIView*)subview heightPercentOfParentWidth:(CGFloat)percent;
 
 -(void)autoLayout:(UIView*)subview marginBottom:(CGFloat)margin;
 -(void)autoLayout:(UIView*)subview marginRight:(CGFloat)margin;
