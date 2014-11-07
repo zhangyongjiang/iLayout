@@ -48,6 +48,11 @@ static NSDictionary* themes;
         }
     }
     
+    NSNumber* preferredMaxLayoutWidth = [self cssNumber:@"preferredMaxLayoutWidth"];
+    if(preferredMaxLayoutWidth) {
+        self.preferredMaxLayoutWidth = preferredMaxLayoutWidth.floatValue;
+    }
+    
     NSString* text = [self css:@"text"];
     if (text) {
         self.text = text;
