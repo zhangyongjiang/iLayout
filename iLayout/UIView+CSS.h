@@ -41,6 +41,9 @@
 -(CGFloat)   cssPaddingWithDefault:(CGFloat)defvalue;
 -(UIFont*)   cssFont;
 
++(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
+-(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
+
 @end
 
 @interface UITextFieldWithPadding : UITextField

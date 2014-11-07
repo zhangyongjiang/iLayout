@@ -949,5 +949,23 @@ static NSString* csskey = @"mycss";
         [view setUseCssLayout:enable];
     }
 }
+
++(void)addDefinition:(NSDictionary *)dict forCssClass:(NSString *)cssClsName {
+    NSString* key = [NSString stringWithFormat:@".%@", cssClsName];
+    [themes setValue:dict forKey:key];
+}
+
+-(void)addDefinition:(NSDictionary *)dict forCssClass:(NSString *)cssClsName {
+    NSMutableDictionary* mydict = [self myCssDict];
+    NSString* key = [NSString stringWithFormat:@".%@", cssClsName];
+    if (mydict) {
+        [mydict setObject:dict forKey:key];
+    }
+    else {
+        mydict = [[NSMutableDictionary alloc] initWithDictionary:dict];
+        [self attachObject:[NSMutableDictionary dictionaryWithObjectsAndKeys:dict, key, nil] forKey:csskey];
+    }
+}
+
 @end
 
