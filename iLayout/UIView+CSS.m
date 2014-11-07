@@ -350,7 +350,8 @@ static NSMutableDictionary* classCssCache;
 
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
-    [self applyCss];
+//    [self applyCss];
+    [view applyCss];
 }
 
 -(id)initWithCssEnabled:(BOOL)enabled {
@@ -422,16 +423,68 @@ static NSMutableDictionary* classCssCache;
 }
 
 -(void)applyCss {
+    NSLog(@"applyCss for %p", self);
     if(self.useCssLayout) {
         UIColor* bgColor = [self cssBgColor];
         if (bgColor) {
             self.backgroundColor = bgColor;
         }
         
-        NSNumber* num = [self cssNumber:@"width"];
-        if(num) self.width = num.floatValue;
-        num = [self cssNumber:@"height"];
-        if(num) self.height = num.floatValue;
+        NSString* strNum = [self css:@"width"];
+        if ([strNum hasSuffix:@"parent-width"]) {
+            if (self.superview) {
+                strNum = [strNum substringToIndex:strNum.length-12];
+                if(strNum.length == 0) {
+                    [self.superview autoLayout:self widthPercent:1];
+                }
+                else {
+                    [self.superview autoLayout:self widthPercent:strNum.floatValue];
+                }
+            }
+        }
+        else if ([strNum hasSuffix:@"parent-height"]) {
+            if (self.superview) {
+                strNum = [strNum substringToIndex:strNum.length-12];
+                if(strNum.length == 0) {
+                    [self.superview autoLayout:self widthPercentOfParentHeight:1];
+                }
+                else {
+                    [self.superview autoLayout:self widthPercentOfParentHeight:strNum.floatValue];
+                }
+            }
+        }
+        else {
+            NSNumber* num = [self numberFromString:strNum];
+            if(num) self.width = num.floatValue;
+        }
+        
+        strNum = [self css:@"height"];
+        if ([strNum hasSuffix:@"parent-width"]) {
+            if (self.superview) {
+                strNum = [strNum substringToIndex:strNum.length-12];
+                if(strNum.length == 0) {
+                    [self.superview autoLayout:self heightPercentOfParentWidth:1];
+                }
+                else {
+                    [self.superview autoLayout:self heightPercentOfParentWidth:strNum.floatValue];
+                }
+            }
+        }
+        else if ([strNum hasSuffix:@"parent-height"]) {
+            if (self.superview) {
+                strNum = [strNum substringToIndex:strNum.length-12];
+                if(strNum.length == 0) {
+                    [self.superview autoLayout:self heightPercent:1];
+                }
+                else {
+                    [self.superview autoLayout:self heightPercent:strNum.floatValue];
+                }
+            }
+        }
+        else {
+            NSNumber* num = [self numberFromString:strNum];
+            if(num) self.height = num.floatValue;
+        }
         
         NSNumber* cornerRadius = [self cssNumber:@"corner-radius"];
         if (cornerRadius) {
@@ -455,9 +508,9 @@ static NSMutableDictionary* classCssCache;
         }
         [self applyCssPositions];
     }
-    for (UIView* child in self.subviews) {
-        [child applyCss];
-    }
+//    for (UIView* child in self.subviews) {
+//        [child applyCss];
+//    }
 }
 
 -(CGFloat)scale
@@ -558,6 +611,7 @@ static NSMutableDictionary* classCssCache;
             NSString* value = [dict objectForKey:name];
             if( value != nil) {
                 value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+                NSLog(@"CSS(%@) %@:%@", clsName, name, value);
                 return value;
             }
         }
@@ -571,6 +625,7 @@ static NSMutableDictionary* classCssCache;
         NSString* value = [dict objectForKey:name];
         if( value != nil) {
             value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+            NSLog(@"CSS(*) %@:%@", name, value);
             return value;
         }
     }
@@ -606,6 +661,7 @@ static NSMutableDictionary* classCssCache;
             NSString* value = [dict objectForKey:name];
             if( value != nil) {
                 value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+                NSLog(@"CSS(%@) %@:%@", ID, name, value);
                 return value;
             }
         }
@@ -644,6 +700,7 @@ static NSMutableDictionary* classCssCache;
             NSString* value = [dict objectForKey:name];
             if( value != nil) {
                 value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+                NSLog(@"CSS(%@) %@:%@", cls, name, value);
                 return value;
             }
         }
