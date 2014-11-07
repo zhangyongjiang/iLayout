@@ -692,9 +692,7 @@ static NSMutableDictionary* classCssCache;
         colorStr = [colorStr stringByReplacingOccurrencesOfString:@" " withString:@""];
         colorStr = [colorStr substringWithRange:NSMakeRange(4, colorStr.length-5)];
         UIImage* img = [UIImage imageNamed:colorStr];
-        if (img.size.width > self.width || img.size.height > self.height) {
-            img = [UIView imageWithImage:img scaledToSize:CGSizeMake(self.width, self.height)];
-        }
+        img = [UIView imageWithImage:img scaledToSize:CGSizeMake(self.width, self.height)];
         NSString* key = [NSString stringWithFormat:@"%@-effect", name];
         NSString* effect = [self css:key];
         if (effect && [effect isEqualToString:@"dark"]) {
