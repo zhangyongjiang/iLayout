@@ -965,5 +965,30 @@ static NSString* csskey = @"mycss";
     }
 }
 
++(UIView*)fromDictionary:(NSDictionary *)dict {
+    NSString* type = [dict objectForKey:@"type"];
+    Class cls = NSClassFromString(type);
+    UIView* instance = [[cls alloc] init];
+    instance.useCssLayout = YES;
+    
+    NSString* ID = [dict objectForKey:@"ID"];
+    if (ID) {
+        instance.ID = ID;
+    }
+    
+    NSString* cssClasses = [dict objectForKey:@"cssClasses"];
+    if (cssClasses) {
+        [instance addCssClasses:cssClasses];
+    }
+    
+    NSArray* subviews = [dict objectForKey:@"subviews"];
+    for (NSDictionary* childDict in subviews) {
+        UIView* subview = [self fromDictionary:childDict];
+        [instance addSubview:subview];
+    }
+    
+    return instance;
+}
+
 @end
 

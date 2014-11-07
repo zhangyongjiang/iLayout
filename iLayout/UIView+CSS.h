@@ -12,8 +12,6 @@
 @property (strong, nonatomic)NSString* ID;
 @property (assign, nonatomic)BOOL useCssLayout;
 
-+(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
-
 -(id)initWithCssClasses:(NSString*)cssCls;
 -(id)initWithID:(NSString *)ID ;
 -(id)initWithID:(NSString *)ID cssClasses:(NSString*)cssClasses ;
@@ -41,8 +39,12 @@
 -(CGFloat)   cssPaddingWithDefault:(CGFloat)defvalue;
 -(UIFont*)   cssFont;
 
-+(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
 -(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
+
++(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
++(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
++(UIView*)fromDictionary:(NSDictionary*) dict;
+
 
 @end
 
