@@ -356,21 +356,18 @@ static NSMutableDictionary* classCssCache;
 
 -(id)initWithCssClasses:(NSString *)cssCls {
     self = [self initWithFrame:CGRectZero];
-    self.useCssLayout = YES;
     [self addCssClasses:cssCls];
     return self;
 }
 
 -(id)initWithID:(NSString *)ID {
     self = [self initWithFrame:CGRectZero];
-    self.useCssLayout = YES;
     self.ID = ID;
     return self;
 }
 
 -(id)initWithID:(NSString *)ID cssClasses:(NSString*)cssClasses {
     self = [self initWithFrame:CGRectZero];
-    self.useCssLayout = YES;
     self.ID = ID;
     [self addCssClasses:cssClasses];
     return self;
@@ -761,6 +758,9 @@ static NSMutableDictionary* classCssCache;
 -(void)addCssClasses:(NSString *)clsNames {
     if (clsNames == nil || clsNames.length == 0) {
         return;
+    }
+    if (!self.useCssLayout) {
+        self.useCssLayout = YES;
     }
     NSArray* names = [clsNames componentsSeparatedByString:@" "];
     for (NSString* cls in names) {
