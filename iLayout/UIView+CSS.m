@@ -436,18 +436,21 @@ static NSMutableDictionary* classCssCache;
 
 -(id)initWithCssClasses:(NSString *)cssCls {
     self = [self initWithFrame:CGRectZero];
+    self.useCssLayout = YES;
     [self addCssClasses:cssCls];
     return self;
 }
 
 -(id)initWithID:(NSString *)ID {
     self = [self initWithFrame:CGRectZero];
+    self.useCssLayout = YES;
     self.ID = ID;
     return self;
 }
 
 -(id)initWithID:(NSString *)ID cssClasses:(NSString*)cssClasses {
     self = [self initWithFrame:CGRectZero];
+    self.useCssLayout = YES;
     self.ID = ID;
     [self addCssClasses:cssClasses];
     return self;
@@ -455,18 +458,21 @@ static NSMutableDictionary* classCssCache;
 
 -(id)initWithFrame:(CGRect)frame cssClasses:(NSString *)cssClasses {
     self = [self initWithFrame_swizzle:frame];
+    self.useCssLayout = YES;
     [self addCssClasses:cssClasses];
     return self;
 }
 
 -(id)initWithFrame:(CGRect)frame andID:(NSString *)ID {
     self = [self initWithFrame_swizzle:frame];
+    self.useCssLayout = YES;
     self.ID = ID;
     return self;
 }
 
 -(id)initWithFrame:(CGRect)frame andID:(NSString *)ID cssClasses:(NSString *)cssClasses {
     self = [self initWithFrame_swizzle:frame];
+    self.useCssLayout = YES;
     self.ID = ID;
     [self addCssClasses:cssClasses];
     return self;
@@ -538,6 +544,12 @@ static NSMutableDictionary* classCssCache;
     }
     [subview applyCss];
     [remain removeObject:subview];
+}
+
+-(void)applyCss:(NSString*)cssClasses {
+    self.useCssLayout = YES;
+    [self addCssClasses:cssClasses];
+    [self applyCss];
 }
 
 -(void)applyCss {
