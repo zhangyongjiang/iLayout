@@ -7,6 +7,17 @@
 
 #import <UIKit/UIKit.h>
 
+@interface CssFile : NSObject
+-(NSString*)cssProperty:(NSString*)propertyName forSelector:(NSString *)selector;
+-(void)addEntry:(NSMutableDictionary*)entry forSelector:(NSString *)selector;
+@end
+
+@interface CssFileList : NSObject
+-(NSString*)cssProperty:(NSString*)propertyName forSelector:(NSString *)selector;
+-(void)addCssFile:(CssFile*) file;
+@end
+
+
 @interface UIView (CSS)
 
 @property (strong, nonatomic)NSString* ID;
@@ -24,7 +35,7 @@
 -(void)applyCss;
 -(void)addCssClasses:(NSString *)clsNames;
 -(void)initProperties;
-- (void)addSubviews:(NSArray *)views;
+-(void)addSubviews:(NSArray *)views;
 
 -(NSString*) css:(NSString*)name;
 -(NSNumber*) cssAbsNumber:(NSString*)name;
@@ -39,12 +50,7 @@
 -(CGFloat)   cssPaddingWithDefault:(CGFloat)defvalue;
 -(UIFont*)   cssFont;
 
--(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
-
-+(void)addDefinition:(NSDictionary*)dict forCssClass:(NSString*)cssClsName;
 +(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
-+(UIView*)fromDictionary:(NSDictionary*) dict;
-
 
 @end
 

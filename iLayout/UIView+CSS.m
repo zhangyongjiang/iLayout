@@ -9,12 +9,64 @@
 #import "UIView+CSS.h"
 #import "ESCssParser.h"
 #import "UIView+Position.h"
-#import "UIView+Autolayout.h"
 #import "UIImage+ImageEffects.h"
 #import "UIColor+String.h"
 #import "NSObject+Attach.h"
 
-static NSDictionary* themes;
+static CssFile* defaultThemes;
+static NSMutableDictionary* classCssCache;
+
+@implementation CssFile
+{
+    NSMutableDictionary* entries;
+}
+
+-(id)init {
+    self = [super init];
+    entries = [[NSMutableDictionary alloc] init];
+    return self;
+}
+
+-(NSString*)cssProperty:(NSString *)propertyName forSelector:(NSString *)selector {
+    NSMutableDictionary* dict = [entries objectForKey:selector];
+    if (!dict) {
+        return nil;
+    }
+    return [dict objectForKey:propertyName];
+}
+
+-(void)addEntry:(NSMutableDictionary *)entry forSelector:(NSString *)selector {
+    [entries setObject:entry forKey:selector];
+}
+@end
+
+@implementation CssFileList
+{
+    NSMutableArray* files;
+}
+
+-(id)init {
+    self = [super init];
+    files = [[NSMutableArray alloc] init];
+    return self;
+}
+
+-(void)addCssFile:(CssFile *)file {
+    [files addObject:file];
+}
+
+-(NSString*)cssProperty:(NSString *)propertyName forSelector:(NSString *)selector {
+    for (CssFile* cf in files) {
+        NSString* value = [cf cssProperty:propertyName forSelector:selector];
+        if (value) {
+            return value;
+        }
+    }
+    return nil;
+}
+
+@end
+
 
 @implementation UILabel (CSS)
 
@@ -242,25 +294,25 @@ static NSDictionary* themes;
 @end
 
 
-static NSMutableDictionary* classCssCache;
 @implementation UIView (CSS)
 
 + (void)load
 {
     static dispatch_once_t onceToken;
     
+    defaultThemes = [[CssFile alloc] init];
+    classCssCache = [[NSMutableDictionary alloc] init];
+    
     ESCssParser *parser = [[ESCssParser alloc] init];
     
-    
     NSString* path = [[NSBundle mainBundle] pathForResource:@"default" ofType:@"css"];
-    if(![[NSFileManager defaultManager] fileExistsAtPath:path]) {
-        themes = [[NSMutableDictionary alloc] init];
+    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        NSDictionary* dict = [parser parseFile:@"default" type:@"css"];
+        [dict setValue:@"default.css" forKey:@"__SOURCE__"];
+        for (NSString* selector in dict) {
+            [defaultThemes addEntry:[dict objectForKey:selector] forSelector:selector];
+        }
     }
-    else {
-        themes = [parser parseFile:@"default" type:@"css"];
-    }
-    
-    classCssCache = [[NSMutableDictionary alloc] init];
     
     dispatch_once(&onceToken, ^{
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(initWithFrame_swizzle:)), class_getInstanceMethod([self class], @selector(initWithFrame:)));
@@ -271,51 +323,11 @@ static NSMutableDictionary* classCssCache;
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
     [self loadSameNameCss];
+    [self addCssFile:defaultThemes];
     
     // add my css to child css if child doesn't have it
     // set child property ID
     [self initProperties];
-    NSString* clsName = [UIView simpleClsName:[self class]];
-    if (![clsName hasPrefix:@"UI"]) {
-        // if above is for performance consideration. No need to process attribute for UI... classes.
-        
-        NSMutableDictionary* myCss = [self attachedObjectForKey:csskey];
-        Class clazz = [self class];
-        u_int count;
-        
-        objc_property_t* properties = class_copyPropertyList(clazz, &count);
-        for (int i = 0; i < count ; i++)
-        {
-            objc_property_t prop=properties[i];
-            Class cls = [self classForProperty:prop];
-            if([self isUIView:cls]) {
-                const char* propertyName = property_getName(prop);
-                NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
-                UIView* propValue = [self valueForKey:key];
-                if (propValue) {
-                    propValue.ID = key;
-                    if (myCss) {
-                        NSMutableDictionary* childCss = [propValue attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
-                        NSUInteger oldCnt = childCss.count;
-                        for (NSString* key in myCss) {
-                            if ([childCss objectForKey:key] == nil) {
-                                [childCss setObject:[myCss objectForKey:key] forKey:key];
-                            }
-                        }
-                        NSUInteger newCnt = childCss.count;
-                        if(oldCnt != newCnt) {
-                            [propValue attachObject:childCss forKey:csskey];
-                            NSString* cssClasses = [propValue css:@"cssClasses"];
-                            if (cssClasses) {
-                                [propValue addCssClasses:cssClasses];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        free(properties);
-    }
     
     self.backgroundColor = [UIColor clearColor];
     return self;
@@ -328,29 +340,32 @@ static NSMutableDictionary* classCssCache;
     NSString* clsName = [UIView simpleClsName:[self class]];
     id cached = [classCssCache objectForKey:clsName];
     if (cached) {
-        if ([cached isKindOfClass:[NSMutableDictionary class]]) {
-            [self attachObject:cached forKey:csskey];
+        if ([cached isKindOfClass:[CssFile class]]) {
+            [self addCssFile:cached];
         }
         return;
     }
     NSString* path = [[NSBundle mainBundle] pathForResource:clsName ofType:@"css"];
     if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        self.useCssLayout = YES;
         ESCssParser *parser = [[ESCssParser alloc] init];
         NSDictionary* dict = [parser parseFile:clsName type:@"css"];
-        NSMutableDictionary* myCss = [self attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
-        [myCss addEntriesFromDictionary:dict];
-        [self attachObject:myCss forKey:csskey];
-        [classCssCache setObject:myCss forKey:clsName];
+        [dict setValue:[NSString stringWithFormat:@"%@.css",clsName] forKey:@"__SOURCE__"];
+
+        CssFile* cf = [[CssFile alloc] init];
+        for (NSString* selector in dict) {
+            [cf addEntry:[dict objectForKey:selector] forSelector:selector];
+        }
+        [self addCssFile:cf];
+        [classCssCache setObject:cf forKey:clsName];
     }
     else {
         [classCssCache setObject:[NSNumber numberWithBool:false] forKey:clsName];
     }
-    
 }
 
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
-//    [self applyCss];
     [view applyCss];
 }
 
@@ -414,12 +429,6 @@ static NSMutableDictionary* classCssCache;
 
 -(void)setUseCssLayout:(BOOL)useCssLayout {
     [self getViewData].useCssLayout = useCssLayout;
-    if (useCssLayout) {
-        NSString* cssClasses = [self css:@"cssClasses"];
-        if (cssClasses) {
-            [self addCssClasses:cssClasses];
-        }
-    }
 }
 
 -(void)applyCss {
@@ -430,61 +439,11 @@ static NSMutableDictionary* classCssCache;
             self.backgroundColor = bgColor;
         }
         
-        NSString* strNum = [self css:@"width"];
-        if ([strNum hasSuffix:@"parent-width"]) {
-            if (self.superview) {
-                strNum = [strNum substringToIndex:strNum.length-12];
-                if(strNum.length == 0) {
-                    [self.superview autoLayout:self widthPercent:1];
-                }
-                else {
-                    [self.superview autoLayout:self widthPercent:strNum.floatValue];
-                }
-            }
-        }
-        else if ([strNum hasSuffix:@"parent-height"]) {
-            if (self.superview) {
-                strNum = [strNum substringToIndex:strNum.length-12];
-                if(strNum.length == 0) {
-                    [self.superview autoLayout:self widthPercentOfParentHeight:1];
-                }
-                else {
-                    [self.superview autoLayout:self widthPercentOfParentHeight:strNum.floatValue];
-                }
-            }
-        }
-        else {
-            NSNumber* num = [self numberFromString:strNum];
-            if(num) self.width = num.floatValue;
-        }
+        NSNumber* num = [self cssNumber:@"width"];
+        if(num) self.width = num.floatValue;
         
-        strNum = [self css:@"height"];
-        if ([strNum hasSuffix:@"parent-width"]) {
-            if (self.superview) {
-                strNum = [strNum substringToIndex:strNum.length-12];
-                if(strNum.length == 0) {
-                    [self.superview autoLayout:self heightPercentOfParentWidth:1];
-                }
-                else {
-                    [self.superview autoLayout:self heightPercentOfParentWidth:strNum.floatValue];
-                }
-            }
-        }
-        else if ([strNum hasSuffix:@"parent-height"]) {
-            if (self.superview) {
-                strNum = [strNum substringToIndex:strNum.length-12];
-                if(strNum.length == 0) {
-                    [self.superview autoLayout:self heightPercent:1];
-                }
-                else {
-                    [self.superview autoLayout:self heightPercent:strNum.floatValue];
-                }
-            }
-        }
-        else {
-            NSNumber* num = [self numberFromString:strNum];
-            if(num) self.height = num.floatValue;
-        }
+        num = [self cssNumber:@"height"];
+        if(num) self.height = num.floatValue;
         
         NSNumber* cornerRadius = [self cssNumber:@"corner-radius"];
         if (cornerRadius) {
@@ -496,21 +455,8 @@ static NSMutableDictionary* classCssCache;
             self.layer.masksToBounds = YES;
         }
         
-        NSString* hcenter = [self css:@"hcenter"];
-        if(hcenter && [hcenter isEqualToString:@"true"]) {
-            [self.superview autoLayoutXCenter:[NSArray arrayWithObject:self]];
-//            [self hcenterInParent];
-        }
-        
-        NSString* vcenter = [self css:@"vcenter"];
-        if(vcenter && [vcenter isEqualToString:@"true"]) {
-            [self vcenterInParent];
-        }
         [self applyCssPositions];
     }
-//    for (UIView* child in self.subviews) {
-//        [child applyCss];
-//    }
 }
 
 -(CGFloat)scale
@@ -594,139 +540,6 @@ static NSMutableDictionary* classCssCache;
 -(NSNumber*) cssNumber:(NSString*)name {
     NSString* strNum = [self css:name];
     return [self numberFromString:strNum];
-}
-
--(NSString*)cssId {
-    NSString* ID = self.ID;
-    if(ID == nil) return nil;
-    return [NSString stringWithFormat:@"#%@", ID];
-}
-
-+(NSString*) css:(NSString*)name forClass:(Class)cls {
-    for(; cls != nil; cls = [cls superclass]) {
-        NSString* clsName = [UIView simpleClsName:cls];
-        clsName = [NSString stringWithFormat:@".%@", clsName];
-        NSDictionary* dict = [themes objectForKey:clsName];
-        if(dict != nil) {
-            NSString* value = [dict objectForKey:name];
-            if( value != nil) {
-                value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-                NSLog(@"CSS(%@) %@:%@", clsName, name, value);
-                return value;
-            }
-        }
-        if ([clsName isEqualToString:@".UIView"]) {
-            break;
-        }
-    }
-    
-    NSDictionary* dict = [themes objectForKey:@"*"];
-    if(dict != nil) {
-        NSString* value = [dict objectForKey:name];
-        if( value != nil) {
-            value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-            NSLog(@"CSS(*) %@:%@", name, value);
-            return value;
-        }
-    }
-    
-    return nil;
-}
-
--(NSString*) cssForID:(NSString*)name {
-    UIView* viewOfCss = self;
-    while (viewOfCss) {
-        NSDictionary* myCssDict = [viewOfCss myCssDict];
-        if (myCssDict) {
-            NSString* value = [self cssForID:name fromDict:myCssDict];
-            if (value) {
-                return value;
-            }
-        }
-        viewOfCss = viewOfCss.superview;
-    }
-    NSString* value = [self cssForID:name fromDict:themes];
-    if (value) {
-        return value;
-    }
-    
-    return nil;
-}
-
--(NSString*) cssForID:(NSString*)name fromDict:(NSDictionary*)cssDict {
-    NSString* ID = [self cssId];
-    if (ID != nil) {
-        NSDictionary* dict = [cssDict objectForKey:ID];
-        if(dict != nil) {
-            NSString* value = [dict objectForKey:name];
-            if( value != nil) {
-                value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-                NSLog(@"CSS(%@) %@:%@", ID, name, value);
-                return value;
-            }
-        }
-    }
-    return nil;
-}
-
--(NSString*) css:(NSString*)name fromDict:(NSDictionary*)cssDict {
-    NSString* value = [self cssForID:name fromDict:cssDict];
-    if (value) {
-        return value;
-    }
-    
-    ViewData* vd = [self getViewData];
-    NSMutableArray* cssClasses = [[NSMutableArray alloc] init];
-    if (vd.cssClasses) {
-        for (NSString* cls in vd.cssClasses) {
-            [cssClasses addObject:cls];
-        }
-    }
-
-    Class clz = [self class];
-    while (clz != nil) {
-        NSString* clsName = [UIView simpleClsName:clz];
-        [cssClasses addObject:clsName];
-        if (clz == [UIView class]) {
-            break;
-        }
-        clz = [clz superclass];
-    }
-    
-    for (NSString* cls in cssClasses) {
-        NSString* key = [NSString stringWithFormat:@".%@", cls];
-        NSDictionary* dict = [cssDict objectForKey:key];
-        if(dict != nil) {
-            NSString* value = [dict objectForKey:name];
-            if( value != nil) {
-                value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-                NSLog(@"CSS(%@) %@:%@", cls, name, value);
-                return value;
-            }
-        }
-    }
-
-    return nil;
-}
-
--(NSString*) css:(NSString*)name {
-    UIView* viewOfCss = self;
-    while (viewOfCss) {
-        NSDictionary* myCssDict = [viewOfCss myCssDict];
-        if (myCssDict) {
-            NSString* value = [self css:name fromDict:myCssDict];
-            if (value) {
-                return value;
-            }
-        }
-        viewOfCss = viewOfCss.superview;
-    }
-    NSString* value = [self css:name fromDict:themes];
-    if (value) {
-        return value;
-    }
-    
-    return [UIView css:name forClass:[self class]];
 }
 
 +(UIColor*)colorFromRGB:(int) rgbValue {
@@ -815,24 +628,6 @@ static NSMutableDictionary* classCssCache;
     return nil;
 }
 
--(void)addCssClasses:(NSString *)clsNames {
-    if (clsNames == nil || clsNames.length == 0) {
-        return;
-    }
-    if (!self.useCssLayout) {
-        self.useCssLayout = YES;
-    }
-    NSArray* names = [clsNames componentsSeparatedByString:@" "];
-    for (NSString* cls in names) {
-        ViewData* vd = [self getViewData];
-        if (vd.cssClasses == nil) {
-            vd.cssClasses = [[NSMutableArray alloc] init];
-        }
-        if ([vd.cssClasses indexOfObject:cls] == NSNotFound) {
-            [vd.cssClasses addObject:cls];
-        }
-    }
-}
 
 
 - (void) dumpProperties{
@@ -906,46 +701,36 @@ static NSMutableDictionary* classCssCache;
     NSNumber* num = [self numberFromString:vp.value];
     if(related == self.superview) {
         if ([ vp.direction isEqualToString:@"hcenter"]) {
-            [self.superview autoLayoutXCenter:[NSArray arrayWithObject:self]];
-//            [self hcenterInParent];
+            [self hcenterInParent];
         }
         else if ([ vp.direction isEqualToString:@"vcenter"]) {
-            [self.superview autoLayoutYCenter:[NSArray arrayWithObject:self]];
-//            [self vcenterInParent];
+            [self vcenterInParent];
         }
         else if ([ vp.direction isEqualToString:@"below"]) {
-            [self.superview autoLayout:self marginTop:num.floatValue];
-//            [self alignParentTopWithMarghin:num.floatValue];
+            [self alignParentTopWithMarghin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"above"]) {
-            [self.superview autoLayout:self marginBottom:num.floatValue];
-//            [self alignParentBottomWithMarghin:num.floatValue];
+            [self alignParentBottomWithMarghin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"left"]) {
-            [self.superview autoLayout:self marginLeft:num.floatValue];
-//            [self alignParentLeftWithMarghin:num.floatValue];
+            [self alignParentLeftWithMarghin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"right"]) {
-            [self.superview autoLayout:self marginRight:num.floatValue];
-//            [self alignParentRightWithMarghin:num.floatValue];
+            [self alignParentRightWithMarghin:num.floatValue];
         }
     }
     else {
         if ([ vp.direction isEqualToString:@"below"]) {
-            [self.superview autoLayout:self belowView:related margin:num.floatValue];
-//            [self belowView:related withMargin:num.floatValue];
+            [self belowView:related withMargin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"above"]) {
-            [self.superview autoLayout:self aboveView:related margin:num.floatValue];
-//            [self aboveView:related withMargin:num.floatValue];
+            [self aboveView:related withMargin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"left"]) {
-            [self.superview autoLayout:self  onTheLeftOfView:related margin:num.floatValue];
-//            [self leftOfView:related withMargin:num.floatValue];
+            [self leftOfView:related withMargin:num.floatValue];
         }
         else if ([ vp.direction isEqualToString:@"right"]) {
-            [self.superview autoLayout:self  onTheRightOfView:related margin:num.floatValue];
-//            [self rightOfView:related withMargin:num.floatValue];
+            [self rightOfView:related withMargin:num.floatValue];
         }
     }
 }
@@ -987,14 +772,32 @@ static NSString* csskey = @"mycss";
         NSString* ext = [fileName substringFromIndex:r.location+1];
         ESCssParser *parser = [[ESCssParser alloc] init];
         NSDictionary* dict = [parser parseFile:name type:ext];
-        NSMutableDictionary* myCss = [self attachedObjectForKey:csskey defaultValue:[[NSMutableDictionary alloc] init]];
-        [myCss addEntriesFromDictionary:dict];
-        [self attachObject:myCss forKey:csskey];
+        [dict setValue:fileName forKey:@"__SOURCE__"];
+        
+        CssFile* cf = [[CssFile alloc] init];
+        for (NSString* key in dict) {
+            [cf addEntry:[dict objectForKey:key] forSelector:key];
+        }
+        
+        CssFileList* cfl = [self attachedObjectForKey:csskey];
+        if (!cfl) {
+            cfl = [[CssFileList alloc] init];
+        }
+        [cfl addCssFile:cf];
+        [self attachObject:cfl forKey:csskey];
     }
 }
--(NSDictionary*)myCssDict {
-    NSDictionary* myCss = [self attachedObjectForKey:csskey];
+-(CssFileList*)myCssFiles {
+    CssFileList* myCss = [self attachedObjectForKey:csskey];
     return myCss;
+}
+-(void)addCssFile:(CssFile*)cssFile {
+    CssFileList* cfl = [self attachedObjectForKey:csskey];
+    if (!cfl) {
+        cfl = [[CssFileList alloc] init];
+    }
+    [cfl addCssFile:cssFile];
+    [self attachObject:cfl forKey:csskey];
 }
 
 -(void)addSubviews:(NSArray *)views
@@ -1010,47 +813,84 @@ static NSString* csskey = @"mycss";
     }
 }
 
-+(void)addDefinition:(NSDictionary *)dict forCssClass:(NSString *)cssClsName {
-    NSString* key = [NSString stringWithFormat:@".%@", cssClsName];
-    [themes setValue:dict forKey:key];
+-(void)addCssClasses:(NSString *)clsNames {
+    if (clsNames == nil || clsNames.length == 0) {
+        return;
+    }
+    NSArray* names = [clsNames componentsSeparatedByString:@" "];
+    for (NSString* cls in names) {
+        ViewData* vd = [self getViewData];
+        if (vd.cssClasses == nil) {
+            vd.cssClasses = [[NSMutableArray alloc] init];
+        }
+        if ([vd.cssClasses indexOfObject:cls] == NSNotFound) {
+            [vd.cssClasses addObject:cls];
+        }
+    }
 }
 
--(void)addDefinition:(NSDictionary *)dict forCssClass:(NSString *)cssClsName {
-    NSMutableDictionary* mydict = [self myCssDict];
-    NSString* key = [NSString stringWithFormat:@".%@", cssClsName];
-    if (mydict) {
-        [mydict setObject:dict forKey:key];
-    }
-    else {
-        mydict = [[NSMutableDictionary alloc] initWithDictionary:dict];
-        [self attachObject:[NSMutableDictionary dictionaryWithObjectsAndKeys:dict, key, nil] forKey:csskey];
-    }
+-(NSMutableArray*)cssClasses {
+    ViewData* vd = [self getViewData];
+    return vd.cssClasses;
 }
 
-+(UIView*)fromDictionary:(NSDictionary *)dict {
-    NSString* type = [dict objectForKey:@"type"];
-    Class cls = NSClassFromString(type);
-    UIView* instance = [[cls alloc] init];
-    instance.useCssLayout = YES;
-    
-    NSString* ID = [dict objectForKey:@"ID"];
+-(NSString*)css:(NSString *)name {
+    NSString* ID = self.ID;
     if (ID) {
-        instance.ID = ID;
+        NSString* selector = [NSString stringWithFormat:@"#%@", ID];
+        NSString* value = [self css:name forSelector:selector];
+        if (value) {
+            value = [self unescape:value];
+            return value;
+        }
     }
     
-    NSString* cssClasses = [dict objectForKey:@"cssClasses"];
-    if (cssClasses) {
-        [instance addCssClasses:cssClasses];
+    NSMutableArray* cssClasses = [self cssClasses];
+    for (NSString* cssCls in cssClasses) {
+        NSString* selector = [NSString stringWithFormat:@".%@", cssCls];
+        NSString* value = [self css:name forSelector:selector];
+        if (value) {
+            value = [self unescape:value];
+            return value;
+        }
     }
     
-    NSArray* subviews = [dict objectForKey:@"subviews"];
-    for (NSDictionary* childDict in subviews) {
-        UIView* subview = [self fromDictionary:childDict];
-        [instance addSubview:subview];
+    Class objCls = [self class];
+    do {
+        NSString* cssCls = [UIView simpleClsName:objCls];
+        NSString* selector = [NSString stringWithFormat:@".%@", cssCls];
+        NSString* value = [self css:name forSelector:selector];
+        if (value) {
+            value = [self unescape:value];
+            return value;
+        }
+        objCls = [objCls superclass];
+    } while (objCls != [UIView class]);
+    
+    NSString* value = [self css:name forSelector:@"*"];
+    if (value) {
+        value = [self unescape:value];
+        return value;
     }
     
-    return instance;
+    return nil;
 }
 
+-(NSString*)unescape:(NSString*)value {
+    return [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+}
+
+-(NSString*)css:(NSString *)name forSelector:(NSString*)selector {
+    UIView* view = self;
+    while (view != nil) {
+        CssFileList* cfl = [view myCssFiles];
+        NSString* value = [cfl cssProperty:name forSelector:selector];
+        if (value) {
+            return value;
+        }
+        view = view.superview;
+    }
+    return nil;
+}
 @end
 
