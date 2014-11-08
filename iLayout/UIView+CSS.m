@@ -336,6 +336,64 @@ static NSMutableDictionary* classCssCache;
 -(void)initProperties {
 }
 
+-(void)bindPropertiesToCssID {
+    Class clazz = [self class];
+    NSString* clsName = [UIView simpleClsName:clazz];
+    if ([clsName hasPrefix:@"UI"]) {
+        return;
+    }
+    
+    u_int count;
+    objc_property_t* properties = class_copyPropertyList(clazz, &count);
+    for (int i = 0; i < count ; i++)
+    {
+        objc_property_t prop=properties[i];
+        Class cls = [self classForProperty:prop];
+        if([self isUIView:cls]) {
+            const char* propertyName = property_getName(prop);
+            NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+            UIView* propValue = [self valueForKey:key];
+            if (propValue) {
+                if (!propValue.ID) {
+                    propValue.ID = key;
+                }
+            }
+        }
+    }
+    free(properties);
+}
+
+-(void)bindPropertyToSubview:(UIView*)subview {
+    Class clazz = [self class];
+    NSString* clsName = [UIView simpleClsName:clazz];
+    if ([clsName hasPrefix:@"UI"] || [clsName hasPrefix:@"_UI"]) {
+        return;
+    }
+    
+    u_int count;
+    objc_property_t* properties = class_copyPropertyList(clazz, &count);
+    for (int i = 0; i < count ; i++)
+    {
+        objc_property_t prop=properties[i];
+        Class cls = [self classForProperty:prop];
+        if([self isUIView:cls]) {
+            const char* propertyName = property_getName(prop);
+            NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+            UIView* propValue = [self valueForKey:key];
+            if (propValue == subview) {
+                if (!propValue.ID) {
+                    propValue.ID = key;
+                    
+                    NSString* cssClasses = [subview css:@"cssClasses"];
+                    [subview addCssClasses:cssClasses];
+                    break;
+                }
+            }
+        }
+    }
+    free(properties);
+}
+
 -(void)loadSameNameCss {
     NSString* clsName = [UIView simpleClsName:[self class]];
     id cached = [classCssCache objectForKey:clsName];
@@ -366,7 +424,8 @@ static NSMutableDictionary* classCssCache;
 
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
-    [view applyCss];
+    [self bindPropertyToSubview:view];
+//    [view applyCss];
 }
 
 -(id)initWithCssEnabled:(BOOL)enabled {
@@ -429,6 +488,56 @@ static NSMutableDictionary* classCssCache;
 
 -(void)setUseCssLayout:(BOOL)useCssLayout {
     [self getViewData].useCssLayout = useCssLayout;
+}
+
+-(void)applyCssRecursive {
+    [self applyCss];
+    NSArray* subviews = self.subviews;
+    if (subviews == nil || subviews.count==0) {
+        return;
+    }
+    NSMutableArray* remain = [[NSMutableArray alloc] init];
+    for (UIView* subview in subviews) {
+        [remain addObject:subview];
+    }
+    
+    while (remain.count > 0) {
+        [self applyCssForSubview:[remain objectAtIndex:0] tracker:[[NSMutableSet alloc] init] remain:remain];
+    }
+}
+
+-(void)applyCssForSubview:(UIView*)subview tracker:(NSMutableSet*)tracker remain:(NSMutableArray*)remain {
+    if ([tracker containsObject:subview]) {
+        NSLog(@"dead loop %@", subview.ID);
+        return;
+    }
+    [tracker addObject:subview];
+    
+    NSMutableArray* uniqueDependents = [subview uniqueDependents];
+    if (!uniqueDependents || uniqueDependents.count == 0) {
+        [subview applyCss];
+        [remain removeObject:subview];
+        return;
+    }
+    if (uniqueDependents.count == 1 && [[uniqueDependents objectAtIndex:0] isEqualToString:@"parent"]) {
+        [subview applyCss];
+        [remain removeObject:subview];
+        return;
+    }
+    [uniqueDependents removeObject:@"parent"];
+    for (NSString* dependent in uniqueDependents) {
+        UIView* sibling = [self viewByName:dependent];
+        if (!sibling) {
+            NSLog(@"sibling %@ doesn't exist", dependent);
+            continue;
+        }
+        if (![remain containsObject:sibling]) {
+            continue;
+        }
+        [self applyCssForSubview:sibling tracker:tracker remain:remain];
+    }
+    [subview applyCss];
+    [remain removeObject:subview];
 }
 
 -(void)applyCss {
@@ -680,16 +789,43 @@ static NSMutableDictionary* classCssCache;
 }
 
 -(void)applyCssPositions {
-    NSString* positions = [self css:@"positions"];
+    NSArray* positions = [self positions];
     if (!positions) {
         return;
     }
-    positions = [positions stringByReplacingOccurrencesOfString:@"\"" withString:@""];
-    NSArray* items = [positions componentsSeparatedByString:@";"];
-    for (NSString* pos in items) {
-        ViewPosition* vp = [ViewPosition parse:pos];
+    for (ViewPosition* vp in positions) {
         [self setPoistion:vp];
     }
+}
+
+-(NSMutableArray*)positions {
+    NSString* positions = [self css:@"positions"];
+    if (!positions) {
+        return nil;
+    }
+    positions = [positions stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+    NSArray* items = [positions componentsSeparatedByString:@";"];
+    NSMutableArray* depends = [[NSMutableArray alloc] init];
+    for (NSString* pos in items) {
+        ViewPosition* vp = [ViewPosition parse:pos];
+        [depends addObject:vp];
+    }
+    return depends;
+}
+
+-(NSMutableArray*)uniqueDependents {
+    NSMutableArray* positions = [self positions];
+    if (positions == nil || positions.count == 0) {
+        return nil;
+    }
+    NSMutableArray* depends = [[NSMutableArray alloc] init];
+    for (ViewPosition* vp in positions) {
+        NSString* relatedto = vp.relatedTo;
+        if (![depends containsObject:relatedto]) {
+            [depends addObject:relatedto];
+        }
+    }
+    return depends;
 }
 
 -(void)setPoistion:(ViewPosition*)vp {

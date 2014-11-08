@@ -33,9 +33,11 @@
 
 -(void)loadCssFiles:(NSString*)fileNames;
 -(void)applyCss;
+-(void)applyCssRecursive;
 -(void)addCssClasses:(NSString *)clsNames;
 -(void)initProperties;
 -(void)addSubviews:(NSArray *)views;
+-(void)bindPropertiesToCssID;
 
 -(NSString*) css:(NSString*)name;
 -(NSNumber*) cssAbsNumber:(NSString*)name;
