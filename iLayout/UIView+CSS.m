@@ -405,18 +405,21 @@ static NSMutableDictionary* classCssCache;
         if ([cached isKindOfClass:[CssFile class]]) {
             [self addCssFile:cached];
         }
-        return;
-    }
-    
-    CssFile* cf = [UIView loadCssFromFile:[NSString stringWithFormat:@"%@.css",clsName]];
-    if (cf) {
-        self.useCssLayout = YES;
-        [self addCssFile:cf];
-        [classCssCache setObject:cf forKey:clsName];
     }
     else {
-        [classCssCache setObject:[NSNumber numberWithBool:false] forKey:clsName];
+        CssFile* cf = [UIView loadCssFromFile:[NSString stringWithFormat:@"%@.css",clsName]];
+        if (cf) {
+            self.useCssLayout = YES;
+            [self addCssFile:cf];
+            [classCssCache setObject:cf forKey:clsName];
+        }
+        else {
+            [classCssCache setObject:[NSNumber numberWithBool:false] forKey:clsName];
+        }
     }
+    if(cls == [UIView class])
+        return;
+    [self loadSameNameCssForClass:[cls superclass]];
 }
 
 -(void)swizzle_addSubview:(UIView *)view {
@@ -1036,6 +1039,7 @@ static NSString* csskey = @"mycss";
 }
 
 +(CssFile*)loadCssFromFile:(NSString*)fileName {
+    NSLog(@"loadCssFromFile %@", fileName);
     NSRange r = [fileName rangeOfString:@"."];
     NSString* name = [fileName substringToIndex:r.location];
     NSString* ext = [fileName substringFromIndex:r.location+1];
