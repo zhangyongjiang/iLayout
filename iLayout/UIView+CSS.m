@@ -68,61 +68,67 @@ static NSMutableDictionary* classCssCache;
 @end
 
 
+@implementation UICollectionView (CSS)
+-(void)applyCss {
+    [super applyCss];
+    if(self.useCssLayout) {
+    }
+}
+@end
+
 @implementation UILabel (CSS)
 
 -(void)applyCss {
+    if(self.useCssLayout) {
+        UIFont* font = [self cssFont];
+        if (font) {
+            self.font = font;
+        }
+        
+        NSNumber* lines = [self cssNumber:@"numberOfLines"];
+        if (lines) {
+            self.numberOfLines = lines.integerValue;
+        }
+        
+        NSString* textAlignment = [self css:@"textAlignment"];
+        if (textAlignment) {
+            if ([textAlignment isEqualToString:@"center"]) {
+                self.textAlignment = NSTextAlignmentCenter;
+            }
+            if ([textAlignment isEqualToString:@"left"]) {
+                self.textAlignment = NSTextAlignmentLeft;
+            }
+            if ([textAlignment isEqualToString:@"right"]) {
+                self.textAlignment = NSTextAlignmentRight;
+            }
+        }
+        
+        NSNumber* preferredMaxLayoutWidth = [self cssNumber:@"preferredMaxLayoutWidth"];
+        if(preferredMaxLayoutWidth) {
+            self.preferredMaxLayoutWidth = preferredMaxLayoutWidth.floatValue;
+        }
+        
+        NSString* text = [self css:@"text"];
+        if (text) {
+            self.text = text;
+        }
+        
+        UIColor* color = [self cssColor:@"color"];
+        if (color) {
+            self.textColor = color;
+        }
+        NSString* textDecoration = [self css:@"text-decoration"];
+        if (textDecoration) {
+            NSString* text = self.text;
+            if (text && [@"underline" isEqualToString:textDecoration]) {
+                NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithString:text];
+                [attrStr setAttributes:@{NSForegroundColorAttributeName:self.textColor,NSUnderlineStyleAttributeName:[NSNumber numberWithInteger:NSUnderlineStyleSingle]} range:NSMakeRange(0,[attrStr length])];
+                [self setAttributedText:attrStr];
+            }
+        }
+    }
+    
     [super applyCss];
-    
-    if(!self.useCssLayout) {
-        return;
-    }
-    
-    UIFont* font = [self cssFont];
-    if (font) {
-        self.font = font;
-    }
-    
-    NSNumber* lines = [self cssNumber:@"numberOfLines"];
-    if (lines) {
-        self.numberOfLines = lines.integerValue;
-    }
-    
-    NSString* textAlignment = [self css:@"textAlignment"];
-    if (textAlignment) {
-        if ([textAlignment isEqualToString:@"center"]) {
-            self.textAlignment = NSTextAlignmentCenter;
-        }
-        if ([textAlignment isEqualToString:@"left"]) {
-            self.textAlignment = NSTextAlignmentLeft;
-        }
-        if ([textAlignment isEqualToString:@"right"]) {
-            self.textAlignment = NSTextAlignmentRight;
-        }
-    }
-    
-    NSNumber* preferredMaxLayoutWidth = [self cssNumber:@"preferredMaxLayoutWidth"];
-    if(preferredMaxLayoutWidth) {
-        self.preferredMaxLayoutWidth = preferredMaxLayoutWidth.floatValue;
-    }
-    
-    NSString* text = [self css:@"text"];
-    if (text) {
-        self.text = text;
-    }
-    
-    UIColor* color = [self cssColor:@"color"];
-    if (color) {
-        self.textColor = color;
-    }
-    NSString* textDecoration = [self css:@"text-decoration"];
-    if (textDecoration) {
-        NSString* text = self.text;
-        if (text && [@"underline" isEqualToString:textDecoration]) {
-            NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithString:text];
-            [attrStr setAttributes:@{NSForegroundColorAttributeName:self.textColor,NSUnderlineStyleAttributeName:[NSNumber numberWithInteger:NSUnderlineStyleSingle]} range:NSMakeRange(0,[attrStr length])];
-            [self setAttributedText:attrStr];
-        }
-    }
 }
 
 @end
@@ -190,6 +196,10 @@ static NSMutableDictionary* classCssCache;
 
 +(ViewPosition*)parse:(NSString *)posStr {
     if (!posStr) {
+        return nil;
+    }
+    posStr = [posStr stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+    if (posStr.length==0) {
         return nil;
     }
     NSArray* items = [posStr componentsSeparatedByString:@" "];
@@ -425,7 +435,7 @@ static NSMutableDictionary* classCssCache;
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
     [self bindPropertyToSubview:view];
-//    [view applyCss];
+    [view applyCss];
 }
 
 -(id)initWithCssEnabled:(BOOL)enabled {
@@ -553,18 +563,17 @@ static NSMutableDictionary* classCssCache;
 }
 
 -(void)applyCss {
-    NSLog(@"applyCss for %p", self);
     if(self.useCssLayout) {
-        UIColor* bgColor = [self cssBgColor];
-        if (bgColor) {
-            self.backgroundColor = bgColor;
-        }
-        
         NSNumber* num = [self cssNumber:@"width"];
         if(num) self.width = num.floatValue;
         
         num = [self cssNumber:@"height"];
         if(num) self.height = num.floatValue;
+        
+        UIColor* bgColor = [self cssBgColor];
+        if (bgColor) {
+            self.backgroundColor = bgColor;
+        }
         
         NSNumber* cornerRadius = [self cssNumber:@"corner-radius"];
         if (cornerRadius) {
@@ -820,7 +829,9 @@ static NSMutableDictionary* classCssCache;
     NSMutableArray* depends = [[NSMutableArray alloc] init];
     for (NSString* pos in items) {
         ViewPosition* vp = [ViewPosition parse:pos];
-        [depends addObject:vp];
+        if (vp) {
+            [depends addObject:vp];
+        }
     }
     return depends;
 }
@@ -1013,7 +1024,7 @@ static NSString* csskey = @"mycss";
             return value;
         }
         objCls = [objCls superclass];
-    } while (objCls != [UIView class]);
+    } while (objCls != [UIResponder class]);
     
     NSString* value = [self css:name forSelector:@"*"];
     if (value) {
