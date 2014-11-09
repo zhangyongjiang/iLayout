@@ -13,7 +13,8 @@
 #import "UIColor+String.h"
 #import "NSObject+Attach.h"
 
-static CssFile* defaultThemes;
+static CssFileList* defaultThemes;
+
 static NSMutableDictionary* classCssCache;
 
 @implementation CssFile
@@ -41,22 +42,19 @@ static NSMutableDictionary* classCssCache;
 @end
 
 @implementation CssFileList
-{
-    NSMutableArray* files;
-}
 
 -(id)init {
     self = [super init];
-    files = [[NSMutableArray alloc] init];
+    self.files = [[NSMutableArray alloc] init];
     return self;
 }
 
 -(void)addCssFile:(CssFile *)file {
-    [files addObject:file];
+    [self.files addObject:file];
 }
 
 -(NSString*)cssProperty:(NSString *)propertyName forSelector:(NSString *)selector {
-    for (CssFile* cf in files) {
+    for (CssFile* cf in self.files) {
         NSString* value = [cf cssProperty:propertyName forSelector:selector];
         if (value) {
             return value;
@@ -241,7 +239,8 @@ static NSMutableDictionary* classCssCache;
         }
     }
     
-    NSNumber* paddingTop = [self cssNumber:@"padding-top"];
+    NSNumber* padding = [self cssNumber:@"padding"];
+    NSNumber* paddingTop = [self cssNumber:@"padding-top" withDefault:padding];
     NSNumber* paddingLeft = [self cssNumber:@"padding-left"];
     NSNumber* paddingBottom = [self cssNumber:@"padding-bottom"];
     NSNumber* paddingRight = [self cssNumber:@"padding-right"];
@@ -310,18 +309,11 @@ static NSMutableDictionary* classCssCache;
 {
     static dispatch_once_t onceToken;
     
-    defaultThemes = [[CssFile alloc] init];
+    defaultThemes = [[CssFileList alloc] init];
     classCssCache = [[NSMutableDictionary alloc] init];
-    
-    ESCssParser *parser = [[ESCssParser alloc] init];
-    
-    NSString* path = [[NSBundle mainBundle] pathForResource:@"default" ofType:@"css"];
-    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
-        NSDictionary* dict = [parser parseFile:@"default" type:@"css"];
-        [dict setValue:@"default.css" forKey:@"__SOURCE__"];
-        for (NSString* selector in dict) {
-            [defaultThemes addEntry:[dict objectForKey:selector] forSelector:selector];
-        }
+    CssFile* defaultCss = [UIView loadCssFromFile:@"default.css"];
+    if (defaultCss) {
+        [defaultThemes addCssFile:defaultCss];
     }
     
     dispatch_once(&onceToken, ^{
@@ -333,7 +325,6 @@ static NSMutableDictionary* classCssCache;
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
     [self loadSameNameCss];
-    [self addCssFile:defaultThemes];
     
     // add my css to child css if child doesn't have it
     // set child property ID
@@ -403,6 +394,7 @@ static NSMutableDictionary* classCssCache;
     }
     free(properties);
 }
+
 
 -(void)loadSameNameCss {
     NSString* clsName = [UIView simpleClsName:[self class]];
@@ -594,25 +586,14 @@ static NSMutableDictionary* classCssCache;
     return  [UIScreen mainScreen].bounds.size.width / 320.0;
 }
 
--(CGFloat) cssAbsNumber:(NSString*)name withDefault:(CGFloat)defvalue {
-    NSNumber* num = [self cssAbsNumber:name];
-    return num ? num.floatValue : defvalue;
+-(NSString*)css:(NSString *)name withDefault:(NSString *)defvalue {
+    NSString* value = [self css:name];
+    return value ? value : defvalue;
 }
 
--(NSNumber*) cssAbsNumber:(NSString*)name {
-    NSString* str = [self css:name];
-    if (!str) {
-        return nil;
-    }
-    if ([str hasSuffix:@"px"]) {
-        str = [str substringToIndex:(str.length-2)];
-    }
-    return [NSNumber numberWithFloat:[str floatValue]];
-}
-
--(CGFloat) cssNumber:(NSString*)name withDefault:(CGFloat)defvalue {
+-(NSNumber*) cssNumber:(NSString*)name withDefault:(NSNumber*)defvalue {
     NSNumber* num = [self cssNumber:name];
-    return num ? num.floatValue : defvalue;
+    return num ? num : defvalue;
 }
 
 -(NSNumber*)numberFromString:(NSString*)strNum {
@@ -922,22 +903,26 @@ static NSMutableDictionary* classCssCache;
     return nil;
 }
 
++(CssFile*)loadCssFromFile:(NSString*)fileName {
+    NSRange r = [fileName rangeOfString:@"."];
+    NSString* name = [fileName substringToIndex:r.location];
+    NSString* ext = [fileName substringFromIndex:r.location+1];
+    ESCssParser *parser = [[ESCssParser alloc] init];
+    NSDictionary* dict = [parser parseFile:name type:ext];
+    [dict setValue:fileName forKey:@"__SOURCE__"];
+    
+    CssFile* cf = [[CssFile alloc] init];
+    for (NSString* key in dict) {
+        [cf addEntry:[dict objectForKey:key] forSelector:key];
+    }
+    return cf;
+}
+
 static NSString* csskey = @"mycss";
 -(void)loadCssFiles:(NSString *)fileNames {
     NSArray* names = [fileNames componentsSeparatedByString:@" "];
     for (NSString* fileName in names) {
-        NSRange r = [fileName rangeOfString:@"."];
-        NSString* name = [fileName substringToIndex:r.location];
-        NSString* ext = [fileName substringFromIndex:r.location+1];
-        ESCssParser *parser = [[ESCssParser alloc] init];
-        NSDictionary* dict = [parser parseFile:name type:ext];
-        [dict setValue:fileName forKey:@"__SOURCE__"];
-        
-        CssFile* cf = [[CssFile alloc] init];
-        for (NSString* key in dict) {
-            [cf addEntry:[dict objectForKey:key] forSelector:key];
-        }
-        
+        CssFile* cf = [UIView loadCssFromFile:fileName];
         CssFileList* cfl = [self attachedObjectForKey:csskey];
         if (!cfl) {
             cfl = [[CssFileList alloc] init];
@@ -1049,7 +1034,13 @@ static NSString* csskey = @"mycss";
         }
         view = view.superview;
     }
+    
+    NSString* value = [defaultThemes cssProperty:name forSelector:selector];
+    if (value) {
+        return value;
+    }
     return nil;
 }
+
 @end
 
