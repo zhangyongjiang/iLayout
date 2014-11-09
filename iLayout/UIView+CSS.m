@@ -325,10 +325,6 @@ static NSMutableDictionary* classCssCache;
     self = [self initWithFrame_swizzle:frame];
     [self loadSameNameCss];
     
-    for (CssFile* cf in defaultThemes.files) {
-        [self addCssFile:cf];
-    }
-    
     // add my css to child css if child doesn't have it
     // set child property ID
     [self initProperties];
@@ -1043,6 +1039,11 @@ static NSString* csskey = @"mycss";
         }
         view = view.superview;
     }
+    NSString* value = [defaultThemes cssProperty:name forSelector:selector];
+    if (value) {
+        return value;
+    }
+    
     return nil;
 }
 
