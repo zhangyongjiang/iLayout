@@ -13,8 +13,6 @@
 @end
 
 @interface CssFileList : NSObject
-@property(strong, nonatomic) NSMutableArray* files;
-
 -(NSString*)cssProperty:(NSString*)propertyName forSelector:(NSString *)selector;
 -(void)addCssFile:(CssFile*) file;
 @end
@@ -35,6 +33,7 @@
 
 -(void)loadCssFiles:(NSString*)fileNames;
 -(void)applyCss;
+-(void)applyCss:(NSString*)cssClasses;
 -(void)applyCssRecursive;
 -(void)addCssClasses:(NSString *)clsNames;
 -(NSMutableArray*)cssClasses;
@@ -43,9 +42,10 @@
 -(void)bindPropertiesToCssID;
 
 -(NSString*) css:(NSString*)name;
--(NSString*) css:(NSString*)name withDefault:(NSString*)defvalue;
+-(NSNumber*) cssAbsNumber:(NSString*)name;
 -(NSNumber*) cssNumber:(NSString*)name;
--(NSNumber*) cssNumber:(NSString*)name withDefault:(NSNumber*)defvalue;
+-(CGFloat)   cssAbsNumber:(NSString*)name withDefault:(CGFloat)defvalue;
+-(CGFloat)   cssNumber:(NSString*)name withDefault:(CGFloat)defvalue;
 -(UIColor*)  cssColor:(NSString*)name;
 -(UIColor*)  cssBgColor;
 -(NSNumber*) cssWidth;
