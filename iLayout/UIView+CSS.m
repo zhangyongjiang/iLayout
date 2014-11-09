@@ -403,17 +403,10 @@ static NSMutableDictionary* classCssCache;
         }
         return;
     }
-    NSString* path = [[NSBundle mainBundle] pathForResource:clsName ofType:@"css"];
-    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+    
+    CssFile* cf = [UIView loadCssFromFile:[NSString stringWithFormat:@"%@.css",clsName]];
+    if (cf) {
         self.useCssLayout = YES;
-        ESCssParser *parser = [[ESCssParser alloc] init];
-        NSDictionary* dict = [parser parseFile:clsName type:@"css"];
-        [dict setValue:[NSString stringWithFormat:@"%@.css",clsName] forKey:@"__SOURCE__"];
-
-        CssFile* cf = [[CssFile alloc] init];
-        for (NSString* selector in dict) {
-            [cf addEntry:[dict objectForKey:selector] forSelector:selector];
-        }
         [self addCssFile:cf];
         [classCssCache setObject:cf forKey:clsName];
     }
@@ -916,24 +909,15 @@ static NSString* csskey = @"mycss";
 -(void)loadCssFiles:(NSString *)fileNames {
     NSArray* names = [fileNames componentsSeparatedByString:@" "];
     for (NSString* fileName in names) {
-        NSRange r = [fileName rangeOfString:@"."];
-        NSString* name = [fileName substringToIndex:r.location];
-        NSString* ext = [fileName substringFromIndex:r.location+1];
-        ESCssParser *parser = [[ESCssParser alloc] init];
-        NSDictionary* dict = [parser parseFile:name type:ext];
-        [dict setValue:fileName forKey:@"__SOURCE__"];
-        
-        CssFile* cf = [[CssFile alloc] init];
-        for (NSString* key in dict) {
-            [cf addEntry:[dict objectForKey:key] forSelector:key];
+        CssFile* cf = [UIView loadCssFromFile:fileName];
+        if (cf) {
+            CssFileList* cfl = [self attachedObjectForKey:csskey];
+            if (!cfl) {
+                cfl = [[CssFileList alloc] init];
+            }
+            [cfl addCssFile:cf];
+            [self attachObject:cfl forKey:csskey];
         }
-        
-        CssFileList* cfl = [self attachedObjectForKey:csskey];
-        if (!cfl) {
-            cfl = [[CssFileList alloc] init];
-        }
-        [cfl addCssFile:cf];
-        [self attachObject:cfl forKey:csskey];
     }
 }
 -(CssFileList*)myCssFiles {
