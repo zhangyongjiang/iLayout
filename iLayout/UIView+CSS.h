@@ -13,6 +13,7 @@
 @end
 
 @interface CssFileList : NSObject
+@property(strong,nonatomic) NSMutableArray* files;
 -(NSString*)cssProperty:(NSString*)propertyName forSelector:(NSString *)selector;
 -(void)addCssFile:(CssFile*) file;
 @end

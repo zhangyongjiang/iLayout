@@ -13,7 +13,7 @@
 #import "UIColor+String.h"
 #import "NSObject+Attach.h"
 
-static CssFile* defaultThemes;
+static CssFileList* defaultThemes;
 static NSMutableDictionary* classCssCache;
 
 @implementation CssFile
@@ -41,22 +41,19 @@ static NSMutableDictionary* classCssCache;
 @end
 
 @implementation CssFileList
-{
-    NSMutableArray* files;
-}
 
 -(id)init {
     self = [super init];
-    files = [[NSMutableArray alloc] init];
+    self.files = [[NSMutableArray alloc] init];
     return self;
 }
 
 -(void)addCssFile:(CssFile *)file {
-    [files addObject:file];
+    [self.files addObject:file];
 }
 
 -(NSString*)cssProperty:(NSString *)propertyName forSelector:(NSString *)selector {
-    for (CssFile* cf in files) {
+    for (CssFile* cf in self.files) {
         NSString* value = [cf cssProperty:propertyName forSelector:selector];
         if (value) {
             return value;
@@ -310,18 +307,12 @@ static NSMutableDictionary* classCssCache;
 {
     static dispatch_once_t onceToken;
     
-    defaultThemes = [[CssFile alloc] init];
+    defaultThemes = [[CssFileList alloc] init];
     classCssCache = [[NSMutableDictionary alloc] init];
     
-    ESCssParser *parser = [[ESCssParser alloc] init];
-    
-    NSString* path = [[NSBundle mainBundle] pathForResource:@"default" ofType:@"css"];
-    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
-        NSDictionary* dict = [parser parseFile:@"default" type:@"css"];
-        [dict setValue:@"default.css" forKey:@"__SOURCE__"];
-        for (NSString* selector in dict) {
-            [defaultThemes addEntry:[dict objectForKey:selector] forSelector:selector];
-        }
+    CssFile* cf = [UIView loadCssFromFile:@"default.css"];
+    if (cf) {
+        [defaultThemes addCssFile:cf];
     }
     
     dispatch_once(&onceToken, ^{
@@ -333,7 +324,10 @@ static NSMutableDictionary* classCssCache;
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
     [self loadSameNameCss];
-    [self addCssFile:defaultThemes];
+    
+    for (CssFile* cf in defaultThemes.files) {
+        [self addCssFile:cf];
+    }
     
     // add my css to child css if child doesn't have it
     // set child property ID
@@ -1051,5 +1045,25 @@ static NSString* csskey = @"mycss";
     }
     return nil;
 }
+
++(CssFile*)loadCssFromFile:(NSString*)fileName {
+    NSRange r = [fileName rangeOfString:@"."];
+    NSString* name = [fileName substringToIndex:r.location];
+    NSString* ext = [fileName substringFromIndex:r.location+1];
+    CssFile* cf = nil;
+    NSString* path = [[NSBundle mainBundle] pathForResource:name ofType:ext];
+    if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
+        ESCssParser *parser = [[ESCssParser alloc] init];
+        NSDictionary* dict = [parser parseFile:name type:ext];
+        [dict setValue:fileName forKey:@"__SOURCE__"];
+    
+        cf = [[CssFile alloc] init];
+        for (NSString* key in dict) {
+                [cf addEntry:[dict objectForKey:key] forSelector:key];
+            }
+    }
+    return cf;
+}
+
 @end
 
