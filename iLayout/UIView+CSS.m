@@ -74,8 +74,20 @@ static NSMutableDictionary* classCssCache;
 @end
 
 @implementation UILabel (CSS)
++ (void)load
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(swizzle_setText:)), class_getInstanceMethod([self class], @selector(setText:)));
+    });
+}
 
--(void)applyCss {
+-(void)swizzle_setText:(NSString *)text {
+    [self swizzle_setText:text];
+    [self applyCssTextDecoration];
+}
+
+-(void)applyCssProperties {
     if(self.useCssLayout) {
         UIFont* font = [self cssFont];
         if (font) {
@@ -105,27 +117,32 @@ static NSMutableDictionary* classCssCache;
             self.preferredMaxLayoutWidth = preferredMaxLayoutWidth.floatValue;
         }
         
+        UIColor* color = [self cssColor:@"color"];
+        if (color) {
+            self.textColor = color;
+        }
+        
         NSString* text = [self css:@"text"];
         if (text) {
             self.text = text;
         }
         
-        UIColor* color = [self cssColor:@"color"];
-        if (color) {
-            self.textColor = color;
-        }
-        NSString* textDecoration = [self css:@"text-decoration"];
-        if (textDecoration) {
-            NSString* text = self.text;
-            if (text && [@"underline" isEqualToString:textDecoration]) {
-                NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithString:text];
-                [attrStr setAttributes:@{NSForegroundColorAttributeName:self.textColor,NSUnderlineStyleAttributeName:[NSNumber numberWithInteger:NSUnderlineStyleSingle]} range:NSMakeRange(0,[attrStr length])];
-                [self setAttributedText:attrStr];
-            }
-        }
+        [self applyCssTextDecoration];
     }
     
-    [super applyCss];
+    [super applyCssProperties];
+}
+
+-(void)applyCssTextDecoration {
+    NSString* textDecoration = [self css:@"text-decoration"];
+    if (textDecoration) {
+        NSString* text = self.text;
+        if (text && [@"underline" isEqualToString:textDecoration]) {
+            NSMutableAttributedString *attrStr = [[NSMutableAttributedString alloc] initWithString:text];
+            [attrStr setAttributes:@{NSForegroundColorAttributeName:self.textColor,NSUnderlineStyleAttributeName:[NSNumber numberWithInteger:NSUnderlineStyleSingle]} range:NSMakeRange(0,[attrStr length])];
+            [self setAttributedText:attrStr];
+        }
+    }
 }
 
 @end
@@ -133,8 +150,8 @@ static NSMutableDictionary* classCssCache;
 
 @implementation UITextField(CSS)
 
--(void)applyCss {
-    [super applyCss];
+-(void)applyCssProperties {
+    [super applyCssProperties];
     if(!self.useCssLayout) {
         return;
     }
@@ -212,8 +229,8 @@ static NSMutableDictionary* classCssCache;
 
 @implementation UIButton (CSS)
 
--(void)applyCss {
-    [super applyCss];
+-(void)applyCssProperties {
+    [super applyCssProperties];
 
     if(!self.useCssLayout) {
         return;
@@ -552,14 +569,24 @@ static NSMutableDictionary* classCssCache;
     [self applyCss];
 }
 
--(void)applyCss {
+-(void)applyCssPosition {
+    if(self.useCssLayout) {
+        [self applyCssPositions];
+    }
+}
+
+-(void)applyCssSize {
     if(self.useCssLayout) {
         NSNumber* num = [self cssNumber:@"width"];
         if(num) self.width = num.floatValue;
         
         num = [self cssNumber:@"height"];
         if(num) self.height = num.floatValue;
-        
+    }
+}
+
+-(void)applyCssProperties {
+    if(self.useCssLayout) {
         UIColor* bgColor = [self cssBgColor];
         if (bgColor) {
             self.backgroundColor = bgColor;
@@ -574,8 +601,14 @@ static NSMutableDictionary* classCssCache;
         if (masksToBounds && [masksToBounds isEqualToString:@"true"]) {
             self.layer.masksToBounds = YES;
         }
-        
-        [self applyCssPositions];
+    }
+}
+
+-(void)applyCss {
+    if(self.useCssLayout) {
+        [self applyCssProperties];
+        [self applyCssSize];
+        [self applyCssPosition];
     }
 }
 
@@ -1039,7 +1072,6 @@ static NSString* csskey = @"mycss";
 }
 
 +(CssFile*)loadCssFromFile:(NSString*)fileName {
-    NSLog(@"loadCssFromFile %@", fileName);
     NSRange r = [fileName rangeOfString:@"."];
     NSString* name = [fileName substringToIndex:r.location];
     NSString* ext = [fileName substringFromIndex:r.location+1];

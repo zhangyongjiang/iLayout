@@ -32,6 +32,10 @@
 -(id)initWithFrame:(CGRect)frame andID:(NSString *)ID cssClasses:(NSString*)cssClasses ;
 -(id)initWithFrame:(CGRect)frame cssClasses:(NSString*)cssClasses ;
 
+-(void)applyCssProperties;
+-(void)applyCssSize;
+-(void)applyCssPosition;
+
 -(void)loadCssFiles:(NSString*)fileNames;
 -(void)applyCss;
 -(void)applyCss:(NSString*)cssClasses;
