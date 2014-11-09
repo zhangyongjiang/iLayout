@@ -395,7 +395,11 @@ static NSMutableDictionary* classCssCache;
 }
 
 -(void)loadSameNameCss {
-    NSString* clsName = [UIView simpleClsName:[self class]];
+    [self loadSameNameCssForClass:[self class]];
+}
+
+-(void)loadSameNameCssForClass:(Class)cls {
+    NSString* clsName = [UIView simpleClsName:cls];
     id cached = [classCssCache objectForKey:clsName];
     if (cached) {
         if ([cached isKindOfClass:[CssFile class]]) {
