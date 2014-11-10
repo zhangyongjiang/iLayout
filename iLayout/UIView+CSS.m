@@ -90,25 +90,29 @@ static NSMutableDictionary* classCssCache;
 -(void)applyCssProperties {
     if(self.useCssLayout) {
         UIFont* font = [self cssFont];
-        if (font) {
+        if (font && ![font isEqual:self.font]) {
             self.font = font;
         }
         
         NSNumber* lines = [self cssNumber:@"numberOfLines"];
-        if (lines) {
+        if (lines && lines.integerValue != self.numberOfLines) {
             self.numberOfLines = lines.integerValue;
         }
         
         NSString* textAlignment = [self css:@"textAlignment"];
         if (textAlignment) {
+            NSTextAlignment newAlignment=0;
             if ([textAlignment isEqualToString:@"center"]) {
-                self.textAlignment = NSTextAlignmentCenter;
+                newAlignment = NSTextAlignmentCenter;
             }
             if ([textAlignment isEqualToString:@"left"]) {
-                self.textAlignment = NSTextAlignmentLeft;
+                newAlignment = NSTextAlignmentLeft;
             }
             if ([textAlignment isEqualToString:@"right"]) {
-                self.textAlignment = NSTextAlignmentRight;
+                newAlignment = NSTextAlignmentRight;
+            }
+            if (self.textAlignment != newAlignment) {
+                self.textAlignment = newAlignment;
             }
         }
         
@@ -122,8 +126,9 @@ static NSMutableDictionary* classCssCache;
             self.textColor = color;
         }
         
+        NSString* currentText = self.text;
         NSString* text = [self css:@"text"];
-        if (text) {
+        if (text && ![text isEqualToString:currentText]) {
             self.text = text;
         }
         
@@ -380,8 +385,13 @@ static NSMutableDictionary* classCssCache;
     free(properties);
 }
 
+
 -(void)bindPropertyToSubview:(UIView*)subview {
-    Class clazz = [self class];
+    [UIView bindPropertyOfObject:self toSubview:subview];
+}
+
++(void)bindPropertyOfObject:(UIView*)obj toSubview:(UIView*)subview {
+    Class clazz = [obj class];
     NSString* clsName = [UIView simpleClsName:clazz];
     if ([clsName hasPrefix:@"UI"] || [clsName hasPrefix:@"_UI"]) {
         return;
@@ -392,11 +402,11 @@ static NSMutableDictionary* classCssCache;
     for (int i = 0; i < count ; i++)
     {
         objc_property_t prop=properties[i];
-        Class cls = [self classForProperty:prop];
-        if([self isUIView:cls]) {
+        Class cls = [obj classForProperty:prop];
+        if([obj isUIView:cls]) {
             const char* propertyName = property_getName(prop);
             NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
-            UIView* propValue = [self valueForKey:key];
+            UIView* propValue = [obj valueForKey:key];
             if (propValue == subview) {
                 if (!propValue.ID) {
                     propValue.ID = key;
@@ -442,7 +452,13 @@ static NSMutableDictionary* classCssCache;
 -(void)swizzle_addSubview:(UIView *)view {
     [self swizzle_addSubview:view];
     [self bindPropertyToSubview:view];
-    [view applyCss];
+}
+
+-(void)layoutSubviews {
+    [self applyCss];
+    for (UIView* child in self.subviews) {
+        [child applyCss];
+    }
 }
 
 -(id)initWithCssEnabled:(BOOL)enabled {
@@ -606,6 +622,10 @@ static NSMutableDictionary* classCssCache;
 
 -(void)applyCss {
     if(self.useCssLayout) {
+        if ([@"userImgView" isEqualToString:self.ID]) {
+            NSLog(@"got you");
+        }
+        NSLog(@"applycss for %@ (%@ %f %f %f %f)", [self class], self.ID, self.x, self.y, self.width, self.height);
         [self applyCssProperties];
         [self applyCssSize];
         [self applyCssPosition];
