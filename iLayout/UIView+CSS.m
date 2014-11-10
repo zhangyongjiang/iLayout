@@ -432,12 +432,12 @@ static NSMutableDictionary* classCssCache;
     for (int i = 0; i < count ; i++)
     {
         objc_property_t prop=properties[i];
-        Class cls = [self classForProperty:prop];
-        if([self isUIView:cls]) {
-            const char* propertyName = property_getName(prop);
-            NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
-            UIView* subview = [self valueForKey:key];
-            if (subview) {
+        const char* propertyName = property_getName(prop);
+        NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+        UIView* subview = [self valueForKey:key];
+        if (subview) {
+            Class cls = [subview class];
+            if([self isUIView:cls]) {
                 if (!subview.ID) {
                     subview.ID = key;
                 }
@@ -930,11 +930,11 @@ static NSMutableDictionary* classCssCache;
             if (cls) {
                 return cls;
             }
-            [clazzName insertString:@"NextShopperSwift." atIndex:0];
-            cls = NSClassFromString(clazzName);
-            if (cls) {
-                return cls;
-            }
+//            [clazzName insertString:@"NextShopperSwift." atIndex:0];
+//            cls = NSClassFromString(clazzName);
+//            if (cls) {
+//                return cls;
+//            }
         }
     } 
     return nil;
