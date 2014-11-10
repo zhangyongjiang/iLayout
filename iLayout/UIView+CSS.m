@@ -437,7 +437,7 @@ static NSMutableDictionary* classCssCache;
         UIView* subview = [self valueForKey:key];
         if (subview) {
             Class cls = [subview class];
-            if([self isUIView:cls]) {
+            if([UIView isUIView:cls]) {
                 if (!subview.ID) {
                     subview.ID = key;
                 }
@@ -447,19 +447,15 @@ static NSMutableDictionary* classCssCache;
     free(properties);
 }
 
--(void)bindPropertyToSubview:(UIView*)subview {
-    [UIView bindPropertyOfObject:self toSubview:subview];
+-(void)bindPropertyToView:(UIView*)view {
+    [UIView bindPropertyOfObject:self toView:view];
 }
 
-+(void)bindPropertyOfObject:(UIView*)obj toSubview:(UIView*)subview {
++(void)bindPropertyOfObject:(UIView*)obj toView:(UIView*)subview {
     Class clazz = [obj class];
     NSString* clsName = [UIView simpleClsName:clazz];
     if ([clsName hasPrefix:@"UI"] || [clsName hasPrefix:@"_UI"]) {
         return;
-    }
-    
-    if ([@"userImgView" isEqualToString:subview.ID]) {
-        NSLog(@"got you");
     }
     
     u_int count;
@@ -467,20 +463,17 @@ static NSMutableDictionary* classCssCache;
     for (int i = 0; i < count ; i++)
     {
         objc_property_t prop=properties[i];
-        Class cls = [obj classForProperty:prop];
-        if([obj isUIView:cls]) {
-            const char* propertyName = property_getName(prop);
-            NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
-            UIView* propValue = [obj valueForKey:key];
-            if (propValue == subview) {
-                if (!propValue.ID) {
-                    propValue.ID = key;
-                }
-                
-                NSString* cssClasses = [subview css:@"cssClasses"];
-                [subview addCssClasses:cssClasses];
-                break;
+        const char* propertyName = property_getName(prop);
+        NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+        UIView* propValue = [obj valueForKey:key];
+        if (propValue && propValue == subview && [UIView isUIView:[propValue class]]) {
+            if (!propValue.ID) {
+                propValue.ID = key;
             }
+            
+            NSString* cssClasses = [subview css:@"cssClasses"];
+            [subview addCssClasses:cssClasses];
+            break;
         }
     }
     free(properties);
@@ -680,9 +673,6 @@ static NSMutableDictionary* classCssCache;
 }
 
 -(void)applyCssSize {
-    if ([@"userImgView" isEqualToString:self.ID]) {
-        NSLog(@"applycss for %@ (%@ %f %f %f %f)", [self class], self.ID, self.x, self.y, self.width, self.height);
-    }
     if(self.useCssLayout) {
         NSNumber* num = [self cssNumber:@"width"];
         if(num) self.width = num.floatValue;
@@ -713,9 +703,6 @@ static NSMutableDictionary* classCssCache;
 
 -(void)applyCss {
     if(self.useCssLayout) {
-        if ([@"userImgView" isEqualToString:self.ID] || [@"userNameView" isEqualToString:self.ID] || [@"boardNameView" isEqualToString:self.ID] ) {
-            NSLog(@"got you");
-        }
         NSLog(@"applycss for %@ (%@ %f %f %f %f)", [self class], self.ID, self.x, self.y, self.width, self.height);
         [self applyCssProperties];
         [self applyCssSize];
@@ -906,7 +893,7 @@ static NSMutableDictionary* classCssCache;
         NSString* str = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
         NSLog(@"%@", str);
         Class cls = [self classForProperty:prop];
-        NSLog(@"isUIView:%d", [self isUIView:cls]);
+        NSLog(@"isUIView:%d", [UIView isUIView:cls]);
     }
     free(properties);
 }
@@ -940,7 +927,7 @@ static NSMutableDictionary* classCssCache;
     return nil;
 }
 
--(BOOL)isUIView:(Class)cls {
++(BOOL)isUIView:(Class)cls {
     while (cls != nil) {
         if (cls == [UIView class]) {
             return YES;
@@ -1111,8 +1098,9 @@ static NSString* csskey = @"mycss";
     }
 }
 
-+(void)enableCssLayouts:(NSArray *)views :(BOOL)enable {
+-(void)enableCssLayouts:(NSArray *)views :(BOOL)enable {
     for (UIView* view in views) {
+        [self bindPropertyToView:view];
         [view setUseCssLayout:enable];
     }
 }

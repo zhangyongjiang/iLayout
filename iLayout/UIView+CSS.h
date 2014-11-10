@@ -59,7 +59,7 @@
 -(CGFloat)   cssPaddingWithDefault:(CGFloat)defvalue;
 -(UIFont*)   cssFont;
 
-+(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
+-(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
 
 @end
 
