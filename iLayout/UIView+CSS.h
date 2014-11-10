@@ -44,7 +44,7 @@
 -(NSMutableArray*)cssClasses;
 -(void)initProperties;
 -(void)addSubviews:(NSArray *)views;
--(void)bindPropertiesToCssID;
+-(void)bindPropertyViewsID;
 
 -(NSString*) css:(NSString*)name;
 -(NSNumber*) cssAbsNumber:(NSString*)name;

@@ -12,6 +12,6 @@
 @property(strong, nonatomic)id nodeid;
 @property(strong, nonatomic)NSMutableArray* subnodes;
 
--(Node*)search:(Node*)node;
+-(Node*)search:(id)nodeid;
 -(void)addSubnode:(Node*)subnode;
 @end

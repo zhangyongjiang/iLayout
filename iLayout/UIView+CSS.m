@@ -9,9 +9,11 @@
 #import "UIView+CSS.h"
 #import "ESCssParser.h"
 #import "UIView+Position.h"
+#import "UIView+Autolayout.h"
 #import "UIImage+ImageEffects.h"
 #import "UIColor+String.h"
 #import "NSObject+Attach.h"
+#import "Node.h"
 
 static CssFileList* defaultThemes;
 static NSMutableDictionary* classCssCache;
@@ -339,8 +341,25 @@ static NSMutableDictionary* classCssCache;
     
     dispatch_once(&onceToken, ^{
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(initWithFrame_swizzle:)), class_getInstanceMethod([self class], @selector(initWithFrame:)));
+        method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(setFrame_swizzle:)), class_getInstanceMethod([self class], @selector(setFrame:)));
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(swizzle_addSubview:)), class_getInstanceMethod([self class], @selector(addSubview:)));
     });
+}
+
+-(void)setFrame_swizzle:(CGRect)frame {
+    [self setFrame_swizzle:frame];
+}
+
+-(void)breadthFirst:(NSMutableArray*)nodes :(NSMutableArray*)queue {
+    if (!nodes || nodes.count==0) {
+        return;
+    }
+    NSMutableArray* nextLevel = [[NSMutableArray alloc] init];
+    for(Node* n in nodes) {
+        [queue addObject:n];
+        [nextLevel addObjectsFromArray:n.subnodes];
+    }
+    [self breadthFirst:nextLevel :queue];
 }
 
 -(id)initWithFrame_swizzle:(CGRect)frame {
@@ -355,10 +374,53 @@ static NSMutableDictionary* classCssCache;
     return self;
 }
 
+-(void)swizzle_addSubview:(UIView *)view {
+    [self swizzle_addSubview:view];
+    //    [self bindPropertyToSubview:view];
+    NSString* cssClasses = [view css:@"cssClasses"];
+    [view addCssClasses:cssClasses];
+    if(view.useCssLayout) {
+        [view applyCss];
+    }
+    if (view.ID) {
+        NSLog(@"addSubview %@", view.ID);
+    }
+    [self adjustChildrenPosition];
+}
+
+-(void)adjustChildrenSize {
+    for (UIView* child in self.subviews) {
+        if (child.useCssLayout) {
+            NSString* str = [child css:@"width"];
+            if (str && [str rangeOfString:@"parent"].location != NSNotFound) {
+                NSNumber* num = [child numberFromString:str];
+                child.width = num.floatValue;
+            }
+            str = [child css:@"height"];
+            if (str && [str rangeOfString:@"parent"].location != NSNotFound) {
+                NSNumber* num = [child numberFromString:str];
+                child.height = num.floatValue;
+            }
+        }
+    }
+}
+
+-(void)adjustChildrenPosition {
+    NSMutableArray* queue = [[NSMutableArray alloc] init];
+    Node* node = [self subviewsDependentTree];
+    if (!node || !node.subnodes || node.subnodes.count == 0) {
+        return;
+    }
+    [self breadthFirst:node.subnodes :queue];
+    for (Node* n in queue) {
+        [n.nodeid applyCssPosition];
+    }
+}
+
 -(void)initProperties {
 }
 
--(void)bindPropertiesToCssID {
+-(void)bindPropertyViewsID {
     Class clazz = [self class];
     NSString* clsName = [UIView simpleClsName:clazz];
     if ([clsName hasPrefix:@"UI"]) {
@@ -374,17 +436,16 @@ static NSMutableDictionary* classCssCache;
         if([self isUIView:cls]) {
             const char* propertyName = property_getName(prop);
             NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
-            UIView* propValue = [self valueForKey:key];
-            if (propValue) {
-                if (!propValue.ID) {
-                    propValue.ID = key;
+            UIView* subview = [self valueForKey:key];
+            if (subview) {
+                if (!subview.ID) {
+                    subview.ID = key;
                 }
             }
         }
     }
     free(properties);
 }
-
 
 -(void)bindPropertyToSubview:(UIView*)subview {
     [UIView bindPropertyOfObject:self toSubview:subview];
@@ -395,6 +456,10 @@ static NSMutableDictionary* classCssCache;
     NSString* clsName = [UIView simpleClsName:clazz];
     if ([clsName hasPrefix:@"UI"] || [clsName hasPrefix:@"_UI"]) {
         return;
+    }
+    
+    if ([@"userImgView" isEqualToString:subview.ID]) {
+        NSLog(@"got you");
     }
     
     u_int count;
@@ -410,11 +475,11 @@ static NSMutableDictionary* classCssCache;
             if (propValue == subview) {
                 if (!propValue.ID) {
                     propValue.ID = key;
-                    
-                    NSString* cssClasses = [subview css:@"cssClasses"];
-                    [subview addCssClasses:cssClasses];
-                    break;
                 }
+                
+                NSString* cssClasses = [subview css:@"cssClasses"];
+                [subview addCssClasses:cssClasses];
+                break;
             }
         }
     }
@@ -449,17 +514,40 @@ static NSMutableDictionary* classCssCache;
     [self loadSameNameCssForClass:[cls superclass]];
 }
 
--(void)swizzle_addSubview:(UIView *)view {
-    [self swizzle_addSubview:view];
-    [self bindPropertyToSubview:view];
+-(Node*) subviewsDependentTree {
+    Node* root = [[Node alloc] init];
+    root.nodeid = self;
+    for (UIView* child in self.subviews) {
+        NSMutableArray* uniqueDependents = [child uniqueDependents];
+        if (uniqueDependents == nil || uniqueDependents.count == 0) {
+            continue;
+        }
+        for (NSString* dep in uniqueDependents) {
+            UIView* view = [child viewByName:dep];
+            if (!view) {
+                NSLog(@"cannot find related view %@", dep);
+                return nil;
+            }
+            Node* node = [root search:view];
+            if (!node) {
+                node = [[Node alloc] init];
+                node.nodeid = view;
+                [root addSubnode:node];
+                
+                Node* childNode = [[Node alloc] init];
+                childNode.nodeid = child;
+                [node addSubnode:childNode];
+            }
+            else {
+                Node* childNode = [[Node alloc] init];
+                childNode.nodeid = child;
+                [node addSubnode:childNode];
+            }
+        }
+    }
+    return root;
 }
 
--(void)layoutSubviews {
-    [self applyCss];
-    for (UIView* child in self.subviews) {
-        [child applyCss];
-    }
-}
 
 -(id)initWithCssEnabled:(BOOL)enabled {
     self = [self initWithFrame:CGRectZero];
@@ -592,6 +680,9 @@ static NSMutableDictionary* classCssCache;
 }
 
 -(void)applyCssSize {
+    if ([@"userImgView" isEqualToString:self.ID]) {
+        NSLog(@"applycss for %@ (%@ %f %f %f %f)", [self class], self.ID, self.x, self.y, self.width, self.height);
+    }
     if(self.useCssLayout) {
         NSNumber* num = [self cssNumber:@"width"];
         if(num) self.width = num.floatValue;
@@ -622,7 +713,7 @@ static NSMutableDictionary* classCssCache;
 
 -(void)applyCss {
     if(self.useCssLayout) {
-        if ([@"userImgView" isEqualToString:self.ID]) {
+        if ([@"userImgView" isEqualToString:self.ID] || [@"userNameView" isEqualToString:self.ID] || [@"boardNameView" isEqualToString:self.ID] ) {
             NSLog(@"got you");
         }
         NSLog(@"applycss for %@ (%@ %f %f %f %f)", [self class], self.ID, self.x, self.y, self.width, self.height);
@@ -857,6 +948,19 @@ static NSMutableDictionary* classCssCache;
     if (!positions) {
         return;
     }
+    BOOL hasAll = YES;
+    NSMutableArray* uniqueDependents = [self uniqueDependents];
+    for (NSString* dep in uniqueDependents) {
+        if (![self viewByName:dep]) {
+            NSLog(@"related view %@ are not ready for view %@ ", dep, self.ID);
+            hasAll = NO;
+            break;
+        }
+    }
+    if (!hasAll) {
+        return;
+    }
+    NSLog(@"applyCssPositions for view %@ ", self.ID);
     for (ViewPosition* vp in positions) {
         [self setPoistion:vp];
     }

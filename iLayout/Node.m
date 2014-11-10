@@ -6,16 +6,16 @@
 //  Copyright (c) 2014 Kevin Zhang. All rights reserved.
 //
 
-#import "Tree.h"
+#import "Node.h"
 
 @implementation Node
 
--(Node*)search:(Node *)node {
-    if ([node.nodeid isEqual:self.nodeid]) {
+-(Node*)search:(id)nodeid {
+    if (nodeid == self.nodeid) {
         return self;
     }
     for (Node* child in self.subnodes) {
-        Node* found = [child search:node];
+        Node* found = [child search:nodeid];
         if (found) {
             return found;
         }
@@ -30,7 +30,7 @@
     }
     else {
         for (Node* sub in self.subnodes) {
-            if ([sub.nodeid isEqual:subnode.nodeid]) {
+            if (sub.nodeid == subnode.nodeid) {
                 return;
             }
         }
