@@ -927,7 +927,14 @@ static NSMutableDictionary* classCssCache;
         if (range.location != NSNotFound) {
             [clazzName deleteCharactersInRange:NSMakeRange(range.location, [clazzName length] - range.location)];
             id cls = NSClassFromString(clazzName);
-            return cls;
+            if (cls) {
+                return cls;
+            }
+            [clazzName insertString:@"NextShopperSwift." atIndex:0];
+            cls = NSClassFromString(clazzName);
+            if (cls) {
+                return cls;
+            }
         }
     } 
     return nil;
