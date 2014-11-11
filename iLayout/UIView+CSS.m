@@ -34,7 +34,9 @@ static NSMutableDictionary* classCssCache;
     if (!dict) {
         return nil;
     }
-    return [dict objectForKey:propertyName];
+    NSString* value = [dict objectForKey:propertyName];
+    value = [value stringByReplacingOccurrencesOfString:@"\"" withString:@""];
+    return value;
 }
 
 -(void)addEntry:(NSMutableDictionary *)entry forSelector:(NSString *)selector {
@@ -1185,7 +1187,7 @@ static NSString* csskey = @"mycss";
         return value;
     }
     NSString* parents = [self css:@"extends" forSelector:selector];
-    parents = [self unescape:parents];
+//    parents = [self unescape:parents];
     for (NSString* parent in [parents componentsSeparatedByString:@" "]) {
         value = [self css:name forCssClass:parent];
         if (value) {
@@ -1201,8 +1203,16 @@ static NSString* csskey = @"mycss";
         NSString* selector = [NSString stringWithFormat:@"#%@", ID];
         NSString* value = [self css:name forSelector:selector];
         if (value) {
-            value = [self unescape:value];
+//            value = [self unescape:value];
             return value;
+        }
+        NSString* extends = [self css:@"extends" forSelector:selector];
+//        extends = [self unescape:extends];
+        for (NSString* parent in [extends componentsSeparatedByString:@" "]) {
+            value = [self css:name forCssClass:parent];
+            if (value) {
+                return value;
+            }
         }
     }
     
@@ -1210,7 +1220,7 @@ static NSString* csskey = @"mycss";
     for (NSString* cssCls in cssClasses) {
         NSString* value = [self css:name forCssClass:cssCls];
         if (value) {
-            value = [self unescape:value];
+//            value = [self unescape:value];
             return value;
         }
     }
@@ -1221,7 +1231,7 @@ static NSString* csskey = @"mycss";
         NSString* selector = [NSString stringWithFormat:@".%@", cssCls];
         NSString* value = [self css:name forSelector:selector];
         if (value) {
-            value = [self unescape:value];
+//            value = [self unescape:value];
             return value;
         }
         objCls = [objCls superclass];
@@ -1229,7 +1239,7 @@ static NSString* csskey = @"mycss";
     
     NSString* value = [self css:name forSelector:@"*"];
     if (value) {
-        value = [self unescape:value];
+//        value = [self unescape:value];
         return value;
     }
     
