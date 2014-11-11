@@ -324,6 +324,19 @@ static NSMutableDictionary* classCssCache;
 
 @end
 
+@implementation UIImageView(CSS)
+
+-(void)applyCssProperties {
+    [super applyCssProperties];
+    
+    NSString* imgName = [self css:@"img-name"];
+    if (imgName) {
+        self.image = [UIImage imageNamed:imgName];
+    }
+}
+
+@end
+
 
 @implementation UIView (CSS)
 
