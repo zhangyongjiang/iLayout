@@ -1306,6 +1306,9 @@ static NSString* csskey = @"mycss";
             [cf addEntry:[dict objectForKey:key] forSelector:key];
         }
     }
+    else {
+        NSLog(@"==== File %@.%@ doesn't exist.", name, ext);
+    }
     return cf;
 }
 
