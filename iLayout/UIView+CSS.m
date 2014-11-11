@@ -17,7 +17,7 @@
 
 static CssFileList* defaultThemes;
 static NSMutableDictionary* classCssCache;
-static NSString* themeName = @"fire-";
+static NSString* themeName = @"";
 static NSMutableArray* loadedCssFiles;
 
 @implementation CssFile
