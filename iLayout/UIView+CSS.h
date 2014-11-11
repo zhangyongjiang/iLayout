@@ -58,6 +58,9 @@
 
 -(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
 
++(void)setTheme:(NSString*)name;
++(NSString*)theme;
+
 @end
 
 @interface UITextFieldWithPadding : UITextField

@@ -17,6 +17,8 @@
 
 static CssFileList* defaultThemes;
 static NSMutableDictionary* classCssCache;
+static NSString* themeName = @"fire-";
+static NSMutableArray* loadedCssFiles;
 
 @implementation CssFile
 {
@@ -42,6 +44,7 @@ static NSMutableDictionary* classCssCache;
 -(void)addEntry:(NSMutableDictionary *)entry forSelector:(NSString *)selector {
     [entries setObject:entry forKey:selector];
 }
+
 @end
 
 @implementation CssFileList
@@ -394,6 +397,13 @@ static NSMutableDictionary* classCssCache;
     
     defaultThemes = [[CssFileList alloc] init];
     classCssCache = [[NSMutableDictionary alloc] init];
+    loadedCssFiles = [[NSMutableArray alloc] init];
+    
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    NSString*theme = [defaults objectForKey:@"theme"];
+    if (theme) {
+        themeName = theme;
+    }
     
     CssFile* cf = [UIView loadCssFromFile:@"default.css"];
     if (cf) {
@@ -405,6 +415,19 @@ static NSMutableDictionary* classCssCache;
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(setFrame_swizzle:)), class_getInstanceMethod([self class], @selector(setFrame:)));
         method_exchangeImplementations(class_getInstanceMethod([UIView class], @selector(swizzle_addSubview:)), class_getInstanceMethod([self class], @selector(addSubview:)));
     });
+}
+
++(void)setTheme:(NSString *)name {
+    themeName = name;
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:name forKey:@"theme"];
+    for (CssFile* cf in loadedCssFiles) {
+        NSString* name = [cf cssProperty:@"file-name" forSelector:@"__SOURCE__"];
+        [self loadCssFromFile:name toCssFile:cf];
+    }
+}
++(NSString*)theme {
+    return themeName;
 }
 
 -(void)setFrame_swizzle:(CGRect)frame {
@@ -1268,21 +1291,31 @@ static NSString* csskey = @"mycss";
     return nil;
 }
 
-+(CssFile*)loadCssFromFile:(NSString*)fileName {
++(CssFile*)loadCssFromFile:(NSString*)fileName toCssFile:(CssFile*)cf{
     NSRange r = [fileName rangeOfString:@"."];
     NSString* name = [fileName substringToIndex:r.location];
+    name = [NSString stringWithFormat:@"%@%@", themeName, name];
     NSString* ext = [fileName substringFromIndex:r.location+1];
-    CssFile* cf = nil;
     NSString* path = [[NSBundle mainBundle] pathForResource:name ofType:ext];
     if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
         ESCssParser *parser = [[ESCssParser alloc] init];
         NSDictionary* dict = [parser parseFile:name type:ext];
         [dict setValue:[[NSDictionary alloc] initWithObjectsAndKeys:fileName, @"file-name", nil] forKey:@"__SOURCE__"];
-    
-        cf = [[CssFile alloc] init];
+
+        if (!cf) {
+            cf = [[CssFile alloc] init];
+        }
         for (NSString* key in dict) {
-                [cf addEntry:[dict objectForKey:key] forSelector:key];
-            }
+            [cf addEntry:[dict objectForKey:key] forSelector:key];
+        }
+    }
+    return cf;
+}
+
++(CssFile*)loadCssFromFile:(NSString*)fileName {
+    CssFile* cf = [self loadCssFromFile:fileName toCssFile:nil];
+    if (cf) {
+        [loadedCssFiles addObject:cf];
     }
     return cf;
 }
