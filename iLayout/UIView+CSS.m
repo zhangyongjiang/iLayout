@@ -486,13 +486,18 @@ static NSMutableDictionary* classCssCache;
 -(void)loadSameNameCssForClass:(Class)cls {
     NSString* clsName = [UIView simpleClsName:cls];
     id cached = [classCssCache objectForKey:clsName];
+    NSString* file = [NSString stringWithFormat:@"%@.css",clsName];
     if (cached) {
         if ([cached isKindOfClass:[CssFile class]]) {
+            NSString* source = [cached cssProperty:@"file-name" forSelector:@"__SOURCE__"];
+            if ([file isEqualToString:source]) {
+                self.useCssLayout = true;
+            }
             [self addCssFile:cached];
         }
     }
     else {
-        CssFile* cf = [UIView loadCssFromFile:[NSString stringWithFormat:@"%@.css",clsName]];
+        CssFile* cf = [UIView loadCssFromFile:file];
         if (cf) {
             self.useCssLayout = YES;
             [self addCssFile:cf];
@@ -1199,7 +1204,7 @@ static NSString* csskey = @"mycss";
     if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
         ESCssParser *parser = [[ESCssParser alloc] init];
         NSDictionary* dict = [parser parseFile:name type:ext];
-        [dict setValue:fileName forKey:@"__SOURCE__"];
+        [dict setValue:[[NSDictionary alloc] initWithObjectsAndKeys:fileName, @"file-name", nil] forKey:@"__SOURCE__"];
     
         cf = [[CssFile alloc] init];
         for (NSString* key in dict) {
