@@ -711,22 +711,6 @@ static NSMutableDictionary* classCssCache;
     return  [UIScreen mainScreen].bounds.size.width / 320.0;
 }
 
--(CGFloat) cssAbsNumber:(NSString*)name withDefault:(CGFloat)defvalue {
-    NSNumber* num = [self cssAbsNumber:name];
-    return num ? num.floatValue : defvalue;
-}
-
--(NSNumber*) cssAbsNumber:(NSString*)name {
-    NSString* str = [self css:name];
-    if (!str) {
-        return nil;
-    }
-    if ([str hasSuffix:@"px"]) {
-        str = [str substringToIndex:(str.length-2)];
-    }
-    return [NSNumber numberWithFloat:[str floatValue]];
-}
-
 -(CGFloat) cssNumber:(NSString*)name withDefault:(CGFloat)defvalue {
     NSNumber* num = [self cssNumber:name];
     return num ? num.floatValue : defvalue;
@@ -781,7 +765,14 @@ static NSMutableDictionary* classCssCache;
     if ([strNum hasSuffix:@"px"]) {
         strNum = [strNum substringToIndex:(strNum.length-2)];
     }
-    return [NSNumber numberWithFloat:([strNum floatValue] * [self scale])];
+
+    if ([strNum hasSuffix:@"!"]) {
+        strNum = [strNum substringToIndex:(strNum.length-1)];
+        return [NSNumber numberWithFloat:[strNum floatValue]];
+    }
+    else {
+        return [NSNumber numberWithFloat:([strNum floatValue] * [self scale])];
+    }
 }
 
 -(NSNumber*) cssNumber:(NSString*)name {

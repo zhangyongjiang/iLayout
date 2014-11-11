@@ -46,9 +46,7 @@
 -(void)bindPropertyViewsID;
 
 -(NSString*) css:(NSString*)name;
--(NSNumber*) cssAbsNumber:(NSString*)name;
 -(NSNumber*) cssNumber:(NSString*)name;
--(CGFloat)   cssAbsNumber:(NSString*)name withDefault:(CGFloat)defvalue;
 -(CGFloat)   cssNumber:(NSString*)name withDefault:(CGFloat)defvalue;
 -(UIColor*)  cssColor:(NSString*)name;
 -(UIColor*)  cssBgColor;
