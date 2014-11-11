@@ -693,6 +693,7 @@ static NSMutableDictionary* classCssCache;
 
 -(void)applyCssProperties {
     if(self.useCssLayout) {
+        [self applyCssSize];
         UIColor* bgColor = [self cssBgColor];
         if (bgColor) {
             self.backgroundColor = bgColor;
