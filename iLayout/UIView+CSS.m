@@ -330,10 +330,54 @@ static NSMutableDictionary* classCssCache;
     [super applyCssProperties];
     
     if (self.useCssLayout) {
-        NSString* imgName = [self css:@"img-name"];
-        if (imgName) {
-            self.image = [UIImage imageNamed:imgName];
+        NSString* value = [self css:@"img-name"];
+        if (value) {
+            self.image = [UIImage imageNamed:value];
         }
+        
+        value = [self css:@"content-mode"];
+        if(value) {
+            if([value isEqualToString:@"ScaleToFill"]) {
+                self.contentMode = UIViewContentModeScaleToFill;
+            }
+            if([value isEqualToString:@"ScaleAspectFit"]) {
+                self.contentMode = UIViewContentModeScaleAspectFit;
+            }
+            if([value isEqualToString:@"ScaleAspectFill"]) {
+                self.contentMode = UIViewContentModeScaleAspectFill;
+            }
+            if([value isEqualToString:@"Redraw"]) {
+                self.contentMode = UIViewContentModeRedraw;
+            }
+            if([value isEqualToString:@"Center"]) {
+                self.contentMode = UIViewContentModeCenter;
+            }
+            if([value isEqualToString:@"Top"]) {
+                self.contentMode = UIViewContentModeTop;
+            }
+            if([value isEqualToString:@"Bottom"]) {
+                self.contentMode = UIViewContentModeBottom;
+            }
+            if([value isEqualToString:@"Left"]) {
+                self.contentMode = UIViewContentModeLeft;
+            }
+            if([value isEqualToString:@"Right"]) {
+                self.contentMode = UIViewContentModeRight;
+            }
+            if([value isEqualToString:@"TopLeft"]) {
+                self.contentMode = UIViewContentModeTopLeft;
+            }
+            if([value isEqualToString:@"TopRight"]) {
+                self.contentMode = UIViewContentModeTopRight;
+            }
+            if([value isEqualToString:@"BottomLeft"]) {
+                self.contentMode = UIViewContentModeBottomLeft;
+            }
+            if([value isEqualToString:@"BottomRight"]) {
+                self.contentMode = UIViewContentModeBottomRight;
+            }
+        }
+                             
     }
 }
 
