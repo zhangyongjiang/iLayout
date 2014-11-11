@@ -42,7 +42,6 @@
 -(void)applyCssRecursive;
 -(void)addCssClasses:(NSString *)clsNames;
 -(NSMutableArray*)cssClasses;
--(void)initProperties;
 -(void)addSubviews:(NSArray *)views;
 -(void)bindPropertyViewsID;
 
