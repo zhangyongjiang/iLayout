@@ -1178,6 +1178,23 @@ static NSString* csskey = @"mycss";
     return vd.cssClasses;
 }
 
+-(NSString*)css:(NSString *)name forCssClass:(NSString*)cssCls {
+    NSString* selector = [NSString stringWithFormat:@".%@", cssCls];
+    NSString* value = [self css:name forSelector:selector];
+    if (value) {
+        return value;
+    }
+    NSString* parents = [self css:@"extends" forSelector:selector];
+    parents = [self unescape:parents];
+    for (NSString* parent in [parents componentsSeparatedByString:@" "]) {
+        value = [self css:name forCssClass:parent];
+        if (value) {
+            return value;
+        }
+    }
+    return nil;
+}
+
 -(NSString*)css:(NSString *)name {
     NSString* ID = self.ID;
     if (ID) {
@@ -1191,8 +1208,7 @@ static NSString* csskey = @"mycss";
     
     NSMutableArray* cssClasses = [self cssClasses];
     for (NSString* cssCls in cssClasses) {
-        NSString* selector = [NSString stringWithFormat:@".%@", cssCls];
-        NSString* value = [self css:name forSelector:selector];
+        NSString* value = [self css:name forCssClass:cssCls];
         if (value) {
             value = [self unescape:value];
             return value;
