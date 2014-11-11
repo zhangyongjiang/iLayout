@@ -783,6 +783,11 @@ static NSMutableArray* loadedCssFiles;
         if (masksToBounds && [masksToBounds isEqualToString:@"true"]) {
             self.layer.masksToBounds = YES;
         }
+        
+        NSNumber* zindex = [self cssNumber:@"z-index"];
+        if (zindex) {
+            self.layer.zPosition = zindex.floatValue;
+        }
     }
 }
 
