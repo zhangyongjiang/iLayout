@@ -1105,6 +1105,7 @@ static NSString* csskey = @"mycss";
     if (clsNames == nil || clsNames.length == 0) {
         return;
     }
+    self.useCssLayout = YES;
     NSArray* names = [clsNames componentsSeparatedByString:@" "];
     for (NSString* cls in names) {
         ViewData* vd = [self getViewData];
