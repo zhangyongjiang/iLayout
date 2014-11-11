@@ -365,12 +365,6 @@ static NSMutableDictionary* classCssCache;
 -(id)initWithFrame_swizzle:(CGRect)frame {
     self = [self initWithFrame_swizzle:frame];
     [self loadSameNameCss];
-    
-    // add my css to child css if child doesn't have it
-    // set child property ID
-    [self initProperties];
-    
-    self.backgroundColor = [UIColor clearColor];
     return self;
 }
 
@@ -415,9 +409,6 @@ static NSMutableDictionary* classCssCache;
     for (Node* n in queue) {
         [n.nodeid applyCssPosition];
     }
-}
-
--(void)initProperties {
 }
 
 -(void)bindPropertyViewsID {
