@@ -425,6 +425,7 @@ static NSMutableArray* loadedCssFiles;
         NSString* name = [cf cssProperty:@"file-name" forSelector:@"__SOURCE__"];
         [self loadCssFromFile:name toCssFile:cf];
     }
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"ThemeChanged" object:nil];
 }
 +(NSString*)theme {
     return themeName;
@@ -697,17 +698,8 @@ static NSMutableArray* loadedCssFiles;
 
 -(void)applyCssRecursive {
     [self applyCss];
-    NSArray* subviews = self.subviews;
-    if (subviews == nil || subviews.count==0) {
-        return;
-    }
-    NSMutableArray* remain = [[NSMutableArray alloc] init];
-    for (UIView* subview in subviews) {
-        [remain addObject:subview];
-    }
-    
-    while (remain.count > 0) {
-        [self applyCssForSubview:[remain objectAtIndex:0] tracker:[[NSMutableSet alloc] init] remain:remain];
+    for (UIView* sub in self.subviews) {
+        [sub applyCssRecursive];
     }
 }
 
