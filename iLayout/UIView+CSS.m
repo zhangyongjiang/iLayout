@@ -329,9 +329,11 @@ static NSMutableDictionary* classCssCache;
 -(void)applyCssProperties {
     [super applyCssProperties];
     
-    NSString* imgName = [self css:@"img-name"];
-    if (imgName) {
-        self.image = [UIImage imageNamed:imgName];
+    if (self.useCssLayout) {
+        NSString* imgName = [self css:@"img-name"];
+        if (imgName) {
+            self.image = [UIImage imageNamed:imgName];
+        }
     }
 }
 
@@ -554,6 +556,7 @@ static NSMutableDictionary* classCssCache;
 -(id)initWithCssEnabled:(BOOL)enabled {
     self = [self initWithFrame:CGRectZero];
     self.useCssLayout = enabled;
+    [self applyCssSize];
     return self;
 }
 
@@ -561,6 +564,7 @@ static NSMutableDictionary* classCssCache;
     self = [self initWithFrame:CGRectZero];
     self.useCssLayout = YES;
     [self addCssClasses:cssCls];
+    [self applyCssSize];
     return self;
 }
 
@@ -576,6 +580,7 @@ static NSMutableDictionary* classCssCache;
     self.useCssLayout = YES;
     self.ID = ID;
     [self addCssClasses:cssClasses];
+    [self applyCssSize];
     return self;
 }
 
@@ -583,6 +588,7 @@ static NSMutableDictionary* classCssCache;
     self = [self initWithFrame_swizzle:frame];
     self.useCssLayout = YES;
     [self addCssClasses:cssClasses];
+    [self applyCssSize];
     return self;
 }
 
@@ -598,6 +604,7 @@ static NSMutableDictionary* classCssCache;
     self.useCssLayout = YES;
     self.ID = ID;
     [self addCssClasses:cssClasses];
+    [self applyCssSize];
     return self;
 }
 
@@ -693,7 +700,6 @@ static NSMutableDictionary* classCssCache;
 
 -(void)applyCssProperties {
     if(self.useCssLayout) {
-        [self applyCssSize];
         UIColor* bgColor = [self cssBgColor];
         if (bgColor) {
             self.backgroundColor = bgColor;
