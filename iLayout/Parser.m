@@ -54,6 +54,28 @@
     for (NSString* line in lines) {
         NSString* trimed = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
         if (trimed.length == 0 || [trimed isEqualToString:@"}"]) {
+            if (continued.length!=0) {
+                if ([line hasPrefix:@"        "] || [line hasPrefix:@"\t\t"] || [line hasPrefix:@"    \t"] || [line hasPrefix:@"\t    "]) {
+                    [continued appendString:@" "];
+                    [continued appendString:trimed];
+                }
+                else {
+                    NSRange range = [continued rangeOfString:@":"];
+                    if (range.location == NSNotFound || range.location == (continued.length-1)) {
+                    }
+                    else {
+                        NSString* key = [continued substringToIndex:range.location];
+                        key = [key stringByReplacingOccurrencesOfString:@" " withString:@""];
+                        NSString* value = [continued substringFromIndex:(range.location+1)];
+                        if ([value hasSuffix:@";"]) {
+                            value = [value substringToIndex:value.length-1];
+                        }
+                        [current.definitions setObject:value forKey:key];
+                    }
+                    continued = [[NSMutableString alloc] init];
+                }
+            }
+            
             if (current.idOrClass && current.definitions.count>0) {
                 [blocks addObject:current];
             }
@@ -65,29 +87,32 @@
             trimed = [trimed stringByReplacingOccurrencesOfString:@"{" withString:@""];
             trimed = [trimed stringByReplacingOccurrencesOfString:@" " withString:@""];
             current.idOrClass = trimed;
+            continued = [[NSMutableString alloc] init];
         }
         else {
             if (continued.length!=0) {
-                [continued appendString:@" "];
-            }
-            [continued appendString:trimed];
-            if ([line hasPrefix:@"        "] || [line hasPrefix:@"\t\t"] || [line hasPrefix:@"    \t"] || [line hasPrefix:@"\t    "]) {
-            }
-            else {
-                NSRange range = [continued rangeOfString:@":"];
-                if (range.location == NSNotFound || range.location == (continued.length-1)) {
-                    continue;
+                if ([line hasPrefix:@"        "] || [line hasPrefix:@"\t\t"] || [line hasPrefix:@"    \t"] || [line hasPrefix:@"\t    "]) {
+                    [continued appendString:@" "];
+                    [continued appendString:trimed];
                 }
                 else {
-                    NSString* key = [continued substringToIndex:range.location];
-                    key = [key stringByReplacingOccurrencesOfString:@" " withString:@""];
-                    NSString* value = [continued substringFromIndex:(range.location+1)];
-                    if ([value hasSuffix:@";"]) {
-                        value = [value substringToIndex:value.length-1];
+                    NSRange range = [continued rangeOfString:@":"];
+                    if (range.location == NSNotFound || range.location == (continued.length-1)) {
                     }
-                    [current.definitions setObject:value forKey:key];
-                    continued = [[NSMutableString alloc] init];
+                    else {
+                        NSString* key = [continued substringToIndex:range.location];
+                        key = [key stringByReplacingOccurrencesOfString:@" " withString:@""];
+                        NSString* value = [continued substringFromIndex:(range.location+1)];
+                        if ([value hasSuffix:@";"]) {
+                            value = [value substringToIndex:value.length-1];
+                        }
+                        [current.definitions setObject:value forKey:key];
+                    }
+                    continued = [[NSMutableString alloc] initWithString:trimed];
                 }
+            }
+            else {
+                [continued appendString:trimed];
             }
         }
     }
