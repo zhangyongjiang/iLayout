@@ -14,6 +14,7 @@
 #import "UIColor+String.h"
 #import "NSObject+Attach.h"
 #import "Node.h"
+#import "Parser.h"
 
 static CssFileList* defaultThemes;
 static NSMutableDictionary* classCssCache;
@@ -635,6 +636,8 @@ static NSMutableArray* loadedCssFiles;
             }
         }
         [self addSubview:sub];
+        NSString* create = [sub css:@"create"];
+        [sub autoCreateSubviews:create];
     }
 }
 
@@ -1345,8 +1348,10 @@ static NSString* csskey = @"mycss";
     NSString* ext = [fileName substringFromIndex:r.location+1];
     NSString* path = [[NSBundle mainBundle] pathForResource:name ofType:ext];
     if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
-        ESCssParser *parser = [[ESCssParser alloc] init];
-        NSDictionary* dict = [parser parseFile:name type:ext];
+        NSDictionary* dict = [[[Parser alloc] init] parseFile:name type:ext];
+//        ESCssParser *parser = [[ESCssParser alloc] init];
+//        dict = [parser parseFile:name type:ext];
+//        NSLog(@"\n\n%@", dict);
         [dict setValue:[[NSDictionary alloc] initWithObjectsAndKeys:fileName, @"file-name", nil] forKey:@"__SOURCE__"];
 
         if (!cf) {
