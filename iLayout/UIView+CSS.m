@@ -559,6 +559,34 @@ static NSMutableArray* loadedCssFiles;
     [self loadSameNameCssForClass:[self class]];
 }
 
+-(NSArray*)makeViewsFromString:(NSString*)viewClassAndID {
+    if (!viewClassAndID) {
+        return nil;
+    }
+    NSMutableArray* views = [[NSMutableArray alloc] init];
+    NSArray* items = [viewClassAndID componentsSeparatedByString:@" "];
+    for (NSString* str in items) {
+        [views addObject:[self makeViewFromString:str]];
+    }
+    return views;
+}
+
+-(UIView*)makeViewFromString:(NSString*)viewClassAndID {
+    NSLog(@"create view from string %@", viewClassAndID);
+    NSArray* items = [viewClassAndID componentsSeparatedByString:@":"];
+    return [self makeViewOfType:[items objectAtIndex:1] withID:[items objectAtIndex:0]];
+}
+
+-(UIView*)makeViewOfType:(NSString*)clsStr withID:(NSString*)ID {
+    Class cls = NSClassFromString(clsStr);
+    if (!cls) {
+        NSLog(@"ERROR: class %@ doesn't exist.", clsStr);
+    }
+    UIView* view = [[cls alloc] init];
+    view.ID = ID;
+    return view;
+}
+
 -(void)loadSameNameCssForClass:(Class)cls {
     NSString* clsName = [UIView simpleClsName:cls];
     id cached = [classCssCache objectForKey:clsName];
@@ -570,6 +598,10 @@ static NSMutableArray* loadedCssFiles;
                 self.useCssLayout = true;
             }
             [self addCssFile:cached];
+            
+            NSString* selector = [NSString stringWithFormat:@".%@", clsName];
+            NSString* create = [cached cssProperty:@"create" forSelector:selector];
+            [self autoCreateSubviews:create];
         }
     }
     else {
@@ -578,6 +610,10 @@ static NSMutableArray* loadedCssFiles;
             self.useCssLayout = YES;
             [self addCssFile:cf];
             [classCssCache setObject:cf forKey:clsName];
+            
+            NSString* selector = [NSString stringWithFormat:@".%@", clsName];
+            NSString* create = [cf cssProperty:@"create" forSelector:selector];
+            [self autoCreateSubviews:create];
         }
         else {
             [classCssCache setObject:[NSNumber numberWithBool:false] forKey:clsName];
@@ -586,6 +622,20 @@ static NSMutableArray* loadedCssFiles;
     if(cls == [UIView class])
         return;
     [self loadSameNameCssForClass:[cls superclass]];
+}
+
+-(void)autoCreateSubviews:(NSString*)create {
+    NSArray* subviews = [self makeViewsFromString:create];
+    for (UIView* sub in subviews) {
+        NSString* ID = sub.ID;
+        if (ID) {
+            sub.useCssLayout = YES;
+            if ([self respondsToSelector:NSSelectorFromString(ID)]) {
+                [self setValue:sub forKey:ID];
+            }
+        }
+        [self addSubview:sub];
+    }
 }
 
 -(Node*) subviewsDependentTree {
