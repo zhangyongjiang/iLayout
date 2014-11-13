@@ -37,7 +37,6 @@
     for (Block* block in blocks) {
         [styleSheet setObject:block.definitions forKey:block.idOrClass];
     }
-    NSLog(@"%@", styleSheet);
     return styleSheet;
 }
 

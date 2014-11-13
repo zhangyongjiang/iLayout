@@ -7,7 +7,6 @@
 
 #import <objc/runtime.h>
 #import "UIView+CSS.h"
-#import "ESCssParser.h"
 #import "UIView+Position.h"
 #import "UIView+Autolayout.h"
 #import "UIImage+ImageEffects.h"
@@ -1349,9 +1348,6 @@ static NSString* csskey = @"mycss";
     NSString* path = [[NSBundle mainBundle] pathForResource:name ofType:ext];
     if([[NSFileManager defaultManager] fileExistsAtPath:path]) {
         NSDictionary* dict = [[[Parser alloc] init] parseFile:name type:ext];
-//        ESCssParser *parser = [[ESCssParser alloc] init];
-//        dict = [parser parseFile:name type:ext];
-//        NSLog(@"\n\n%@", dict);
         [dict setValue:[[NSDictionary alloc] initWithObjectsAndKeys:fileName, @"file-name", nil] forKey:@"__SOURCE__"];
 
         if (!cf) {
