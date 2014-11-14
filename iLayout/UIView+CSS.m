@@ -19,6 +19,9 @@ static CssFileList* defaultThemes;
 static NSMutableDictionary* classCssCache;
 static NSString* themeName = @"";
 static NSMutableArray* loadedCssFiles;
+static NSCharacterSet* NumberCharSet;
+static NSCharacterSet* AlphaCharSet;
+
 
 @implementation CssFile
 {
@@ -395,6 +398,9 @@ static NSMutableArray* loadedCssFiles;
 {
     static dispatch_once_t onceToken;
     
+    NumberCharSet = [NSCharacterSet characterSetWithCharactersInString:@"1234567890."];
+    AlphaCharSet = [NumberCharSet invertedSet];
+    
     defaultThemes = [[CssFileList alloc] init];
     classCssCache = [[NSMutableDictionary alloc] init];
     loadedCssFiles = [[NSMutableArray alloc] init];
@@ -460,9 +466,6 @@ static NSMutableArray* loadedCssFiles;
     [view addCssClasses:cssClasses];
     if(view.useCssLayout) {
         [view applyCss];
-    }
-    if (view.ID) {
-        NSLog(@"addSubview %@", view.ID);
     }
     [self adjustChildrenPosition];
 }
@@ -637,6 +640,110 @@ static NSMutableArray* loadedCssFiles;
         [self addSubview:sub];
         NSString* create = [sub css:@"create"];
         [sub autoCreateSubviews:create];
+    }
+}
+
+-(void)autoCreateSubviews {
+    Class clazz  = [self class];
+    while (true) {
+        NSString* clsName = [UIView simpleClsName:clazz];
+        if ([clsName hasPrefix:@"UI"] || [clsName hasPrefix:@"_UI"]) {
+            return;
+        }
+        [self autoCreateSubviewsForClass:clazz];
+        clazz = [clazz superclass];
+    }
+}
+
+-(void)autoCreateSubviewsForClass:(Class)clazz {
+    u_int count;
+    objc_property_t* properties = class_copyPropertyList(clazz, &count);
+    for (int i = 0; i < count ; i++)
+    {
+        objc_property_t prop=properties[i];
+        const char* propertyName = property_getName(prop);
+        NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+        UIView* subview = [self valueForKey:key];
+        if (!subview) {
+            Class propertyClass = [self classForProperty:prop];
+            subview = [[propertyClass alloc] init];
+            subview.ID = key;
+            [self addSubview:subview];
+        }
+    }
+    free(properties);
+}
+
+-(void)autoAddSubviews {
+    Class clazz  = [self class];
+    while (true) {
+        NSString* clsName = [UIView simpleClsName:clazz];
+        if ([clsName hasPrefix:@"UI"] || [clsName hasPrefix:@"_UI"]) {
+            return;
+        }
+        [self autoAddSubviewsForClass:clazz];
+        clazz = [clazz superclass];
+    }
+}
+
+-(void)autoAddSubviewsForClass:(Class)clazz {
+    u_int count;
+    objc_property_t* properties = class_copyPropertyList(clazz, &count);
+    for (int i = 0; i < count ; i++)
+    {
+        objc_property_t prop=properties[i];
+        const char* propertyName = property_getName(prop);
+        NSString* key = [NSString stringWithCString:propertyName encoding:NSUTF8StringEncoding];
+        UIView* subview = [self valueForKey:key];
+        if (subview) {
+            subview.ID = key;
+            subview.useCssLayout = YES;
+            if (subview.width < 0.001) {
+                subview.width = 100;
+            }
+            if (subview.height < 0.01) {
+                subview.height = 40;
+            }
+            UIView* bottomView = [self subviewOnTheBottom];
+            if (bottomView) {
+                subview.y = bottomView.y + bottomView.height + 3;
+            }
+            [self addSubview:subview];
+            
+        }
+    }
+    free(properties);
+}
+
+-(UIView*)subviewOnTheBottom {
+    UIView* bottom;
+    for (UIView* subview in self.subviews) {
+        if (!bottom) {
+            bottom = subview;
+        }
+        else if (subview.y + subview.height > bottom.y + bottom.height){
+            bottom = subview;
+        }
+    }
+    return nil;
+}
+
+-(void)addSubviewsTopToBottom:(NSArray *)views {
+    UIView* bottomView = nil;
+    for (UIView* subview in views) {
+        if (subview) {
+            if (subview.width < 0.001) {
+                subview.width = 100;
+            }
+            if (subview.height < 0.01) {
+                subview.height = 40;
+            }
+            if (bottomView) {
+                subview.y = bottomView.y + bottomView.height + 3;
+            }
+            bottomView = subview;
+            [self addSubview:subview];
+        }
     }
 }
 
@@ -837,7 +944,6 @@ static NSMutableArray* loadedCssFiles;
 
 -(void)applyCss {
     if(self.useCssLayout) {
-        NSLog(@"applycss for %@ (%@ %f %f %f %f)", [self class], self.ID, self.x, self.y, self.width, self.height);
         [self applyCssProperties];
         [self applyCssSize];
         [self applyCssPosition];
@@ -909,6 +1015,10 @@ static NSMutableArray* loadedCssFiles;
         return [NSNumber numberWithFloat:[strNum floatValue]];
     }
     else {
+        NSRange range = [strNum rangeOfCharacterFromSet:AlphaCharSet];
+        if (range.location != NSNotFound) {
+            @throw([NSException exceptionWithName:@"InvalidData" reason:strNum userInfo:nil]);
+        }
         return [NSNumber numberWithFloat:([strNum floatValue] * [self scale])];
     }
 }
@@ -962,7 +1072,7 @@ static NSMutableArray* loadedCssFiles;
     }
     
     NSLog(@"invalid color str %@", colorStr);
-    return [UIColor clearColor];
+    return nil;
 }
 
 -(UIColor*) cssBgColor {
@@ -1079,7 +1189,6 @@ static NSMutableArray* loadedCssFiles;
     if (!hasAll) {
         return;
     }
-    NSLog(@"applyCssPositions for view %@ ", self.ID);
     for (ViewPosition* vp in positions) {
         [self setPoistion:vp];
     }
@@ -1131,20 +1240,31 @@ static NSMutableArray* loadedCssFiles;
         else if ([ vp.direction isEqualToString:@"vcenter"]) {
             [self vcenterInParent];
         }
-        else if ([ vp.direction isEqualToString:@"below"]) {
-            [self alignParentTopWithMarghin:num.floatValue];
-        }
-        else if ([ vp.direction isEqualToString:@"above"]) {
-            [self alignParentBottomWithMarghin:num.floatValue];
-        }
-        else if ([ vp.direction isEqualToString:@"left"]) {
-            [self alignParentLeftWithMarghin:num.floatValue];
-        }
-        else if ([ vp.direction isEqualToString:@"right"]) {
-            [self alignParentRightWithMarghin:num.floatValue];
+        else {
+            if (!num) {
+                @throw([NSException exceptionWithName:@"Invalid Position" reason:vp.description userInfo:nil]);
+            }
+            if ([ vp.direction isEqualToString:@"below"]) {
+                [self alignParentTopWithMarghin:num.floatValue];
+            }
+            else if ([ vp.direction isEqualToString:@"above"]) {
+                [self alignParentBottomWithMarghin:num.floatValue];
+            }
+            else if ([ vp.direction isEqualToString:@"left"]) {
+                [self alignParentLeftWithMarghin:num.floatValue];
+            }
+            else if ([ vp.direction isEqualToString:@"right"]) {
+                [self alignParentRightWithMarghin:num.floatValue];
+            }
+            else {
+                @throw([NSException exceptionWithName:@"Invalid Position" reason:vp.description userInfo:nil]);
+            }
         }
     }
     else {
+        if (!num) {
+            @throw([NSException exceptionWithName:@"Invalid Position" reason:vp.description userInfo:nil]);
+        }
         if ([ vp.direction isEqualToString:@"below"]) {
             [self belowView:related withMargin:num.floatValue];
         }
@@ -1156,6 +1276,9 @@ static NSMutableArray* loadedCssFiles;
         }
         else if ([ vp.direction isEqualToString:@"right"]) {
             [self rightOfView:related withMargin:num.floatValue];
+        }
+        else {
+            @throw([NSException exceptionWithName:@"Invalid Position" reason:vp.description userInfo:nil]);
         }
     }
 }
@@ -1315,6 +1438,15 @@ static NSString* csskey = @"mycss";
         return value;
     }
     
+    UIView* parent = [self superview];
+    if (parent && self.ID) {
+        name = [NSString stringWithFormat:@"#%@.%@", self.ID, name];
+        value = [parent css:name];
+        if (value) {
+            return value;
+        }
+    }
+    
     return nil;
 }
 
@@ -1356,9 +1488,6 @@ static NSString* csskey = @"mycss";
         for (NSString* key in dict) {
             [cf addEntry:[dict objectForKey:key] forSelector:key];
         }
-    }
-    else {
-        NSLog(@"==== File %@.%@ doesn't exist.", name, ext);
     }
     return cf;
 }

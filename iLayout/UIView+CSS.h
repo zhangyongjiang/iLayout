@@ -43,6 +43,7 @@
 -(void)addCssClasses:(NSString *)clsNames;
 -(NSMutableArray*)cssClasses;
 -(void)addSubviews:(NSArray *)views;
+-(void)addSubviewsTopToBottom:(NSArray *)views;
 -(void)bindPropertyViewsID;
 
 -(NSString*) css:(NSString*)name;
@@ -55,8 +56,11 @@
 -(NSNumber*) cssPadding;
 -(CGFloat)   cssPaddingWithDefault:(CGFloat)defvalue;
 -(UIFont*)   cssFont;
+-(NSString*) cssIncludeParent:(NSString*)name;
 
 -(void)enableCssLayouts:(NSArray *)views :(BOOL)enable;
+-(void)autoCreateSubviews;
+-(void)autoAddSubviews;
 
 +(void)setTheme:(NSString*)name;
 +(NSString*)theme;
