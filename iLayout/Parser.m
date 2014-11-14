@@ -60,6 +60,9 @@
                 }
                 else {
                     NSRange range = [continued rangeOfString:@":"];
+                    if (range.location == NSNotFound) {
+                        range = [continued rangeOfString:@"="];
+                    }
                     if (range.location == NSNotFound || range.location == (continued.length-1)) {
                     }
                     else {
@@ -96,6 +99,9 @@
                 }
                 else {
                     NSRange range = [continued rangeOfString:@":"];
+                    if (range.location == NSNotFound) {
+                        range = [continued rangeOfString:@"="];
+                    }
                     if (range.location == NSNotFound || range.location == (continued.length-1)) {
                     }
                     else {
