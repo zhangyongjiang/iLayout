@@ -165,7 +165,13 @@ static NSMutableDictionary* colorNames;
      [colorNames setObject:[self colorFromRGB:0xF5F5F5] forKey:[@"WhiteSmoke" lowercaseString]];
      [colorNames setObject:[self colorFromRGB:0xFFFF00] forKey:[@"Yellow" lowercaseString]];
     [colorNames setObject:[self colorFromRGB:0x9ACD32] forKey:[@"YellowGreen" lowercaseString]];
+
     [colorNames setObject:[UIColor clearColor] forKey:[@"clear" lowercaseString]];
+    [colorNames setObject:[self colorFromRGB:0x333333] forKey:[@"black3" lowercaseString]];
+    [colorNames setObject:[self colorFromRGB:0x555555] forKey:[@"gray5" lowercaseString]];
+    [colorNames setObject:[self colorFromRGB:0x888888] forKey:[@"gray8" lowercaseString]];
+    [colorNames setObject:[self colorFromRGB:0xdf1663] forKey:[@"nsred" lowercaseString]];
+    [colorNames setObject:[self colorFromRGB:0x4e0722] forKey:[@"nsdarkred" lowercaseString]];
 }
 
 +(BOOL)numberFromStr:(NSString*)colorStr :(float *)pvalue {
