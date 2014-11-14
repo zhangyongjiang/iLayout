@@ -93,6 +93,12 @@ static NSCharacterSet* AlphaCharSet;
 }
 
 -(void)swizzle_setText:(NSString *)text {
+    if (self.useCssLayout) {
+        NSString* upper = [self css:@"uppercase"];
+        if ([upper isEqualToString:@"true"]) {
+            text = [text uppercaseString];
+        }
+    }
     [self swizzle_setText:text];
     [self applyCssTextDecoration];
 }
